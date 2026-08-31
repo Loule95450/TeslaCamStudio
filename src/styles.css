@@ -79,7 +79,7 @@ body.dark-theme {
 }
 
 body {
-    font-family: 'Noto Sans SC', 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     height: 100vh; /* Fallback for browsers that don't support dvh */
@@ -342,7 +342,7 @@ body {
 }
 
 .open-sidebar-btn {
-    display: none; /* 默认隐藏 */
+    display: none; /* hidden by default */
     background: transparent;
     border: none;
     cursor: pointer;
@@ -825,7 +825,7 @@ body.dark-theme #eventFilter {
 }
 
 .video-container.empty::after {
-    content: '无信号';
+    content: 'No Signal';
     position: absolute;
     top: 0;
     left: 0;
@@ -1366,11 +1366,11 @@ body.dark-theme #eventFilter {
     .video-time {
         font-size: 0.75rem;
         line-height: 1.4;
-        display: block; /* 改为 block 允许内联元素自然排列 */
+        display: block; /* block, so inline children wrap naturally */
     }
 
     .video-time .city-link {
-        display: inline; /* 允许与图标同行 */
+        display: inline; /* keep it on the same line as the icon */
         color: #007bff;
         font-weight: bold;
     }
@@ -1385,7 +1385,7 @@ body.dark-theme #eventFilter {
         border-radius: 6px;
         font-size: 1rem;
         margin-right: 6px;
-        margin-bottom: 4px; /* 换行时增加间距 */
+        margin-bottom: 4px; /* extra spacing when it wraps */
         vertical-align: middle;
     }
 
@@ -1497,8 +1497,8 @@ body.sidebar-collapsed .open-sidebar-btn {
     opacity: 0.85;
 }
 
-.map-btn.gaode {
-    background-color: #007aff; /* 高德地图蓝 */
+.map-btn.primary {
+    background-color: #007aff;
 }
 
 .map-btn.google {

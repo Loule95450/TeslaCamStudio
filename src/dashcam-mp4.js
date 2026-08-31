@@ -303,22 +303,22 @@ const DashcamHelpers = (function () {
 
   // Field definitions for SEI metadata
   const fieldDefinitions = [
-    { propName: 'version', label: 'Version', labelZh: '版本' },
-    { propName: 'gearState', label: 'Gear State', labelZh: '档位状态', enumMap: GearState },
-    { propName: 'frameSeqNo', label: 'Frame Seq No', labelZh: '帧序号' },
-    { propName: 'vehicleSpeedMps', label: 'Vehicle Speed (m/s)', labelZh: '车速 (m/s)', format: 'float' },
-    { propName: 'acceleratorPedalPosition', label: 'Accelerator Pedal Position', labelZh: '油门踏板位置', format: 'float' },
-    { propName: 'steeringWheelAngle', label: 'Steering Wheel Angle', labelZh: '方向盘角度', format: 'float' },
-    { propName: 'blinkerOnLeft', label: 'Blinker On Left', labelZh: '左转向灯', format: 'boolean' },
-    { propName: 'blinkerOnRight', label: 'Blinker On Right', labelZh: '右转向灯', format: 'boolean' },
-    { propName: 'brakeApplied', label: 'Brake Applied', labelZh: '刹车', format: 'boolean' },
-    { propName: 'autopilotState', label: 'Autopilot State', labelZh: '自动驾驶状态', enumMap: AutopilotState },
-    { propName: 'latitudeDeg', label: 'Latitude (°)', labelZh: '纬度 (°)', format: 'coordinate' },
-    { propName: 'longitudeDeg', label: 'Longitude (°)', labelZh: '经度 (°)', format: 'coordinate' },
-    { propName: 'headingDeg', label: 'Heading (°)', labelZh: '航向 (°)', format: 'float' },
-    { propName: 'linearAccelerationMps2X', label: 'Linear Acceleration X (m/s²)', labelZh: '线性加速度 X (m/s²)', format: 'float' },
-    { propName: 'linearAccelerationMps2Y', label: 'Linear Acceleration Y (m/s²)', labelZh: '线性加速度 Y (m/s²)', format: 'float' },
-    { propName: 'linearAccelerationMps2Z', label: 'Linear Acceleration Z (m/s²)', labelZh: '线性加速度 Z (m/s²)', format: 'float' }
+    { propName: 'version', label: 'Version', labelFr: 'Version' },
+    { propName: 'gearState', label: 'Gear State', labelFr: 'Rapport engagé', enumMap: GearState },
+    { propName: 'frameSeqNo', label: 'Frame Seq No', labelFr: 'N° de trame' },
+    { propName: 'vehicleSpeedMps', label: 'Vehicle Speed (m/s)', labelFr: 'Vitesse (m/s)', format: 'float' },
+    { propName: 'acceleratorPedalPosition', label: 'Accelerator Pedal Position', labelFr: 'Position de l\'accélérateur', format: 'float' },
+    { propName: 'steeringWheelAngle', label: 'Steering Wheel Angle', labelFr: 'Angle du volant', format: 'float' },
+    { propName: 'blinkerOnLeft', label: 'Blinker On Left', labelFr: 'Clignotant gauche', format: 'boolean' },
+    { propName: 'blinkerOnRight', label: 'Blinker On Right', labelFr: 'Clignotant droit', format: 'boolean' },
+    { propName: 'brakeApplied', label: 'Brake Applied', labelFr: 'Frein', format: 'boolean' },
+    { propName: 'autopilotState', label: 'Autopilot State', labelFr: 'État Autopilot', enumMap: AutopilotState },
+    { propName: 'latitudeDeg', label: 'Latitude (°)', labelFr: 'Latitude (°)', format: 'coordinate' },
+    { propName: 'longitudeDeg', label: 'Longitude (°)', labelFr: 'Longitude (°)', format: 'coordinate' },
+    { propName: 'headingDeg', label: 'Heading (°)', labelFr: 'Cap (°)', format: 'float' },
+    { propName: 'linearAccelerationMps2X', label: 'Linear Acceleration X (m/s²)', labelFr: 'Accélération linéaire X (m/s²)', format: 'float' },
+    { propName: 'linearAccelerationMps2Y', label: 'Linear Acceleration Y (m/s²)', labelFr: 'Accélération linéaire Y (m/s²)', format: 'float' },
+    { propName: 'linearAccelerationMps2Z', label: 'Linear Acceleration Z (m/s²)', labelFr: 'Accélération linéaire Z (m/s²)', format: 'float' }
   ];
 
   /** Initialize protobuf by loading the .proto file */

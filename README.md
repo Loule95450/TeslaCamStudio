@@ -3,8 +3,6 @@
 </p>
 <h1 align="center">TDashcam Studio</h1>
 
-<p align="center">English | <a href="README_CN.md">简体中文</a></p>
-
 <p align="center">
   <a href="https://github.com/DeaglePC/TDashcamStudio/releases"><img src="https://img.shields.io/github/v/release/DeaglePC/TDashcamStudio?style=flat-square&color=blue" alt="Release"></a>
   <a href="https://github.com/DeaglePC/TDashcamStudio/releases"><img src="https://img.shields.io/github/downloads/DeaglePC/TDashcamStudio/total?style=flat-square&color=green" alt="Downloads"></a>

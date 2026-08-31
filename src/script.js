@@ -1,10 +1,10 @@
- const i18n = {
+const i18n = {
     en: {
         pageTitle: "TDashcam Studio",
         headerTitle: "TDashcam Studio",
         toggleSidebar: "Toggle Sidebar",
         toggleTheme: "Toggle Theme",
-        toggleLanguage: "切换到中文",
+        toggleLanguage: "Passer en français",
         drivingRecords: "Driving Records",
         date: "Date",
         eventType: "Event Type",
@@ -19,12 +19,11 @@
         helpStep2: "Select or drag the 'TeslaCam' directory from the drive",
         helpStep1IOS: "Copy TeslaCam videos to your iPad/iPhone",
         helpStep2IOS: "Select the video files (e.g., 2024-01-15_12-30-00-front.mp4)",
-        helpNote: "Note: This tool does not upload your data. All operations are performed locally. (Gaode Maps may have inaccuracies due to limited WGS-84 support.)",
+        helpNote: "Note: This tool does not upload your data. All processing happens locally.",
         desktopTip: "💡 Tip: Due to browser limitations, it is recommended to use the desktop version for better performance.",
         desktopDownload: "Download Desktop Version",
         mapModalTitle: "View on Map",
-        gaodeMap: "Gaode Map",
-        googleMap: "Google Map",
+        googleMap: "Google Maps",
         revealFile: "Show Path",
         downloadFile: "Download",
         filePathAlertTitle: "Current Video File Path",
@@ -76,7 +75,6 @@
         brakeApplied: "Applied",
         brakeNotApplied: "Not applied",
         blinker: "Blinker",
-
         autopilot: "Autopilot",
         gps: "GPS",
         heading: "Heading",
@@ -87,7 +85,7 @@
         gearNeutral: "Neutral",
         blinkerLeft: "Left",
         blinkerRight: "Right",
-        blinkerBoth: "Both",
+        blinkerBoth: "Hazard",
         blinkerOff: "Off",
         autopilotNone: "None",
         autopilotSelfDriving: "FSD",
@@ -106,120 +104,156 @@
         accelZ: "Accel Z",
         exportMetadata: "Export CSV",
         exportMetadataSuccess: "Metadata exported successfully",
-        exportMetadataNoData: "No metadata available to export"
+        exportMetadataNoData: "No metadata available to export",
+        grid6: "6-Grid",
+        grid4: "4-Grid",
+        legacy: "Picture-in-Picture",
+        loadingFFmpeg: "Loading FFmpeg repair module...",
+        readingVideo: "Reading video file...",
+        repairingVideo: "Repairing video metadata...",
+        savingVideo: "Saving repaired video...",
+        encoding: "Encoding...",
+        fastExporting: "Fast Exporting...",
+        ffmpegFastExporting: "FFmpeg Fast Exporting...",
+        ffmpegMergingGrid: "FFmpeg Merging Grid Video...",
+        generatingOverlays: "Generating metadata overlays...",
+        generatingOverlay: "Generating overlay"
     },
-    zh: {
+    fr: {
         pageTitle: "TDashcam Studio",
         headerTitle: "TDashcam Studio",
-        toggleSidebar: "切换侧边栏",
-        toggleTheme: "切换主题",
+        toggleSidebar: "Afficher/masquer le panneau",
+        toggleTheme: "Changer de thème",
         toggleLanguage: "Switch to English",
-        drivingRecords: "行车记录",
-        date: "日期",
-        eventType: "事件类型",
-        allTypes: "🎥 所有类型",
-        recentClips: "🕒 最近片段",
-        savedClips: "💾 保存片段",
-        sentryClips: "🤖 哨兵模式",
-        noRecordsFound: "没有找到匹配的记录",
-        selectFolder: "📁 选择文件夹",
-        selectFiles: "📁 选择文件",
-        helpStep1: "插入特斯拉U盘到你的PC",
-        helpStep2: "选择或拖拽U盘中的TeslaCam目录",
-        helpStep1IOS: "将TeslaCam视频复制到iPad/iPhone",
-        helpStep2IOS: "选择视频文件（如 2024-01-15_12-30-00-front.mp4）",
-        helpNote: "注意：本工具不会上传你的数据，一切操作都是本地行为。（由于高德对WGS-84支持不够，所以高德地图有误差）",
-        desktopTip: "💡 提示：由于浏览器有诸多限制，建议使用桌面版获得更好的性能体验。",
-        desktopDownload: "下载桌面版",
-        mapModalTitle: "在地图上查看",
-        gaodeMap: "高德地图",
-        googleMap: "谷歌地图",
-        revealFile: "显示路径",
-        downloadFile: "下载视频",
-        filePathAlertTitle: "当前视频文件路径",
-        copiedToClipboard: "已复制到剪贴板",
-        noFilePath: "无法获取当前摄像头的文件路径",
-        selectDate: "选择日期",
-        minutes: "分钟",
-        preview: "预览图",
-        noSignal: "无信号",
-        grid6: "6宫格",
-        grid4: "4宫格",
-        legacy: "画中画",
-        front: "前",
-        back: "后",
-        left: "左",
-        right: "右",
-        leftPillar: "左柱",
-        rightPillar: "右柱",
-        play: "播放",
-        pause: "暂停",
-        toggleDay: "切换到日间模式",
-        toggleNight: "切换到夜间模式",
-        invalidFolder: "这似乎不是一个有效的TeslaCam目录。请确保您选择了包含RecentClips, SavedClips等子文件夹的TeslaCam目录。",
-        clipVideo: "剪辑视频",
-        confirmClip: "确认剪辑范围",
-        exportClip: "导出视频片段",
-        clipDuration: "选中时长:",
-        clipStartTime: "起始时间:",
-        clipEndTime: "结束时间:",
-        selectCameras: "选择摄像头:",
-        addTimestamp: "添加时间水印",
-        addMetadata: "添加行驶数据",
-        mergeVideos: "合成四宫格视频",
-        startExport: "开始导出",
-        cancel: "取消",
-        preparing: "准备中...",
-        processing: "处理中...",
-        exporting: "导出中...",
-        complete: "完成!",
-        selectClipRange: "请先在进度条上选择剪辑范围",
-        selectAtLeastOneCamera: "请至少选择一个摄像头",
-        exportFailed: "导出失败: ",
-        metadata: "行车数据",
-        driveStats: "行车数据",
-        loadingMetadata: "加载中...",
-        noMetadata: "无元数据",
-        speed: "速度",
-        gear: "档位",
-        steering: "方向盘角度",
-        accelerator: "油门踏板",
-        brake: "刹车",
-        brakeApplied: "踩下",
-        brakeNotApplied: "未踩",
-        blinker: "转向灯",
-        autopilot: "自动驾驶",
-        gps: "GPS 坐标",
-        heading: "航向",
-        acceleration: "加速度",
-        gearPark: "驻车 (P)",
-        gearDrive: "前进 (D)",
-        gearReverse: "倒车 (R)",
-        gearNeutral: "空档 (N)",
-        blinkerLeft: "左",
-        blinkerRight: "右",
-        blinkerBoth: "双闪",
-        blinkerOff: "关",
-        autopilotNone: "无",
-        autopilotSelfDriving: "完全自动驾驶 (FSD)",
-        autopilotAutosteer: "自动辅助转向",
-        autopilotTACC: "自适应巡航",
-        moreOptions: "更多选项",
-        metadataDetail: "详细数据",
-        vehicleStatus: "车辆状态",
-        drivingAssist: "驾驶辅助",
-        locationInfo: "位置信息",
-        motionData: "运动数据",
-        latitude: "纬度",
-        longitude: "经度",
-        accelX: "加速度 X",
-        accelY: "加速度 Y",
-        accelZ: "加速度 Z",
-        exportMetadata: "导出CSV",
-        exportMetadataSuccess: "元数据导出成功",
-        exportMetadataNoData: "没有可导出的元数据"
+        drivingRecords: "Enregistrements",
+        date: "Date",
+        eventType: "Type d'événement",
+        allTypes: "📂 Tous les types",
+        recentClips: "🕒 Clips récents",
+        savedClips: "💾 Clips sauvegardés",
+        sentryClips: "🤖 Mode Sentinelle",
+        noRecordsFound: "Aucun enregistrement trouvé",
+        selectFolder: "📁 Choisir un dossier",
+        selectFiles: "📁 Choisir des fichiers",
+        helpStep1: "Branchez la clé USB de votre Tesla sur votre ordinateur",
+        helpStep2: "Sélectionnez ou glissez le dossier « TeslaCam » de la clé",
+        helpStep1IOS: "Copiez les vidéos TeslaCam sur votre iPad/iPhone",
+        helpStep2IOS: "Sélectionnez les fichiers vidéo (ex. 2024-01-15_12-30-00-front.mp4)",
+        helpNote: "Note : cet outil n'envoie aucune donnée. Tout le traitement se fait en local.",
+        desktopTip: "💡 Astuce : à cause des limites du navigateur, la version bureau offre de meilleures performances.",
+        desktopDownload: "Télécharger la version bureau",
+        mapModalTitle: "Voir sur la carte",
+        googleMap: "Google Maps",
+        revealFile: "Afficher le chemin",
+        downloadFile: "Télécharger",
+        filePathAlertTitle: "Chemin du fichier vidéo actuel",
+        copiedToClipboard: "Copié dans le presse-papiers",
+        noFilePath: "Impossible de déterminer le chemin du fichier pour la caméra active.",
+        selectDate: "Choisir une date",
+        minutes: "minutes",
+        preview: "Aperçu",
+        noSignal: "Pas de signal",
+        front: "Avant",
+        back: "Arrière",
+        left: "Gauche",
+        right: "Droite",
+        leftPillar: "Montant gauche",
+        rightPillar: "Montant droit",
+        play: "Lecture",
+        pause: "Pause",
+        toggleDay: "Passer en mode jour",
+        toggleNight: "Passer en mode nuit",
+        invalidFolder: "Ce dossier ne semble pas être un dossier TeslaCam valide. Vérifiez que vous avez sélectionné le dossier « TeslaCam » contenant les sous-dossiers RecentClips, SavedClips, etc.",
+        clipVideo: "Découper la vidéo",
+        confirmClip: "Confirmer la plage",
+        exportClip: "Exporter l'extrait",
+        clipDuration: "Durée :",
+        clipStartTime: "Début :",
+        clipEndTime: "Fin :",
+        selectCameras: "Caméras :",
+        addTimestamp: "Ajouter l'horodatage",
+        addMetadata: "Incruster les données de conduite",
+        mergeVideos: "Fusionner en mosaïque",
+        startExport: "Lancer l'export",
+        cancel: "Annuler",
+        preparing: "Préparation...",
+        processing: "Traitement...",
+        exporting: "Export...",
+        complete: "Terminé !",
+        selectClipRange: "Sélectionnez d'abord une plage sur la barre de progression",
+        selectAtLeastOneCamera: "Sélectionnez au moins une caméra",
+        exportFailed: "Échec de l'export : ",
+        metadata: "Données",
+        driveStats: "Statistiques",
+        loadingMetadata: "Chargement...",
+        noMetadata: "Aucune métadonnée",
+        speed: "Vitesse",
+        gear: "Rapport",
+        steering: "Volant",
+        accelerator: "Accélérateur",
+        brake: "Frein",
+        brakeApplied: "Enfoncé",
+        brakeNotApplied: "Relâché",
+        blinker: "Clignotant",
+        autopilot: "Autopilot",
+        gps: "GPS",
+        heading: "Cap",
+        acceleration: "Accélération",
+        gearPark: "Parking",
+        gearDrive: "Marche avant",
+        gearReverse: "Marche arrière",
+        gearNeutral: "Point mort",
+        blinkerLeft: "Gauche",
+        blinkerRight: "Droite",
+        blinkerBoth: "Warnings",
+        blinkerOff: "Éteint",
+        autopilotNone: "Aucun",
+        autopilotSelfDriving: "FSD",
+        autopilotAutosteer: "Autosteer",
+        autopilotTACC: "TACC",
+        moreOptions: "Plus d'options",
+        metadataDetail: "Détails",
+        vehicleStatus: "État du véhicule",
+        drivingAssist: "Aide à la conduite",
+        locationInfo: "Localisation",
+        motionData: "Données de mouvement",
+        latitude: "Latitude",
+        longitude: "Longitude",
+        accelX: "Accél. X",
+        accelY: "Accél. Y",
+        accelZ: "Accél. Z",
+        exportMetadata: "Exporter CSV",
+        exportMetadataSuccess: "Métadonnées exportées",
+        exportMetadataNoData: "Aucune métadonnée à exporter",
+        grid6: "Mosaïque 6",
+        grid4: "Mosaïque 4",
+        legacy: "Incrustation",
+        loadingFFmpeg: "Chargement du module de réparation FFmpeg...",
+        readingVideo: "Lecture du fichier vidéo...",
+        repairingVideo: "Réparation des métadonnées vidéo...",
+        savingVideo: "Enregistrement de la vidéo réparée...",
+        encoding: "Encodage...",
+        fastExporting: "Export rapide...",
+        ffmpegFastExporting: "Export rapide FFmpeg...",
+        ffmpegMergingGrid: "Fusion de la mosaïque FFmpeg...",
+        generatingOverlays: "Génération des incrustations...",
+        generatingOverlay: "Génération de l'incrustation"
     }
 };
+
+const CAMERA_I18N_KEYS = {
+    front: 'front',
+    left_pillar: 'leftPillar',
+    right_pillar: 'rightPillar',
+    back: 'back',
+    left: 'left',
+    right: 'right'
+};
+
+function cameraLabel(camera, lang) {
+    const key = CAMERA_I18N_KEYS[camera];
+    return key ? (i18n[lang] || i18n.en)[key] : null;
+}
 
 // --- Tauri Helper Functions ---
 function getTauri() {
@@ -349,7 +383,7 @@ class MetadataOverlayGenerator {
             'TACC': 'TACC'
         };
         
-        // 预加载刹车踏板图标
+        // Preload the brake-pedal icon
         this.brakeIconLoaded = false;
         this.brakeIconImg = null;
         this.loadBrakeIcon();
@@ -579,7 +613,7 @@ class MetadataOverlayGenerator {
         // NO BACKGROUND DRAWN HERE - IT WILL BE OVERLAID SEPARATELY IN FFMPEG
 
         // Draw items (Using FIXED COORDINATES to prevent jittering)
-        ctx.font = 'bold 24px "Noto Sans SC", Arial, sans-serif';
+        ctx.font = 'bold 24px Arial, sans-serif';
         ctx.textBaseline = 'middle';
         const yCenter = barHeight / 2;
         
@@ -779,7 +813,7 @@ class MetadataOverlayGenerator {
         ctx.restore();
     }
     
-    // 预加载刹车踏板SVG图标
+    // Preload the brake-pedal SVG icon
     loadBrakeIcon() {
         const svgContent = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M821.394 861.482H200.242c-23.709 0-44.013-20.191-45.124-44.975 0 0-30.555-129.896-30.044-166.228 0.325-23.102 15.23-164.3 15.23-164.3 2.449-27.739 18.019-48.258 42.686-48.258h646.233c24.667 0 44.357 21.769 43.759 48.258l14.579 163.622-22.043 166.906c-0.56 24.784-20.414 44.975-44.124 44.975z m24.716-358.364l0.292-10.498c0.23-8.275-6.452-15.059-14.85-15.059H186.497c-8.397 0-14.828 6.784-14.291 15.059l0.681 10.498c0.534 8.232 7.802 14.954 16.153 14.954h641.472c8.35 0 15.37-6.722 15.598-14.954z m8.739 81.304l0.296-10.264c0.233-8.091-6.628-14.724-15.248-14.724H177.735c-8.62 0-15.226 6.633-14.681 14.724l0.691 10.264c0.542 8.049 7.999 14.622 16.571 14.622H838.84c8.574 0 15.777-6.572 16.009-14.622z m6.172 79.506l0.298-10.038c0.235-7.912-6.747-14.399-15.516-14.399H172.234c-8.769 0-15.494 6.487-14.945 14.399l0.695 10.038c0.545 7.872 8.126 14.3 16.847 14.3h669.91c8.721 0 16.047-6.428 16.28-14.3z m-14.901 77.765l0.282-9.819c0.222-7.74-6.466-14.085-14.863-14.085H186.526c-8.397 0-14.841 6.345-14.322 14.085l0.659 9.819c0.517 7.701 7.772 13.989 16.123 13.989h641.548c8.351 0 15.365-6.288 15.586-13.989z m-8.749 76.081l0.267-9.608c0.21-7.573-6.189-13.781-14.222-13.781H206.385c-8.033 0-14.202 6.208-13.711 13.781l0.623 9.608c0.489 7.535 7.425 13.688 15.415 13.688h613.751c7.99 0.001 14.698-6.152 14.908-13.688z m1.869-378.856l36.038-94.167 21.623-119.775H785.183L752.749 356.56l-118.926 82.358H839.24z" fill="#ffffff"/></svg>`;
         const blob = new Blob([svgContent], { type: 'image/svg+xml' });
@@ -802,26 +836,26 @@ class MetadataOverlayGenerator {
                 ctx.shadowColor = 'rgba(255, 77, 79, 0.5)';
             }
             
-            // 绘制图标，居中对齐 - 使用较大尺寸
+            // Draw the icon, centred, at a larger size
             const iconSize = size * 1.5;
             const iconX = x + (size - iconSize) / 2;
             const iconY = y - iconSize / 2;
             
-            // 使用Path2D绘制SVG路径
+            // Draw the SVG path with Path2D
             const color = active ? '#ff4d4f' : 'rgba(255,255,255,0.2)';
             ctx.fillStyle = color;
             
-            // SVG viewBox是0 0 1024 1024，路径实际范围约 x:140-880, y:162-861
-            // 需要调整偏移使其居中
+            // SVG viewBox is 0 0 1024 1024; the path actually spans about x:140-880, y:162-861
+            // Offset it so the path ends up centred
             const svgSize = 1024;
-            const pathWidth = 880 - 140; // 约740
-            const pathHeight = 861 - 162; // 约699
-            const pathCenterX = 140 + pathWidth / 2; // 约510
-            const pathCenterY = 162 + pathHeight / 2; // 约511
+            const pathWidth = 880 - 140; // ~740
+            const pathHeight = 861 - 162; // ~699
+            const pathCenterX = 140 + pathWidth / 2; // ~510
+            const pathCenterY = 162 + pathHeight / 2; // ~511
             
             const scale = iconSize / svgSize;
             
-            // 将路径中心移到图标中心
+            // Move the path centre onto the icon centre
             ctx.translate(iconX + iconSize / 2, iconY + iconSize / 2);
             ctx.scale(scale, scale);
             ctx.translate(-pathCenterX, -pathCenterY);
@@ -974,7 +1008,7 @@ class MetadataOverlayGenerator {
      * Generate all unique overlay PNGs needed for the video and save them
      * Returns a map of stateKey -> pngPath, or null if too many unique states
      */
-    async generateOverlayPngs(allMetadata, clipSegments, workDir, width = 1920, height = 1080, progressCallback = null, language = 'zh') {
+    async generateOverlayPngs(allMetadata, clipSegments, workDir, width = 1920, height = 1080, progressCallback = null, language = 'en') {
         const tauri = window.__TAURI__;
         const fs = tauri.fs;
         
@@ -1003,7 +1037,7 @@ class MetadataOverlayGenerator {
             return null;
         }
         
-        progressCallback?.(language === 'zh' ? `生成 ${uniqueStates.size} 个元数据覆盖层...` : `Generating ${uniqueStates.size} metadata overlays...`);
+        progressCallback?.(`Generating ${uniqueStates.size} metadata overlays...`);
         
         // Create directory for PNGs
         await fs.mkdir(pngDir, { recursive: true });
@@ -1028,7 +1062,7 @@ class MetadataOverlayGenerator {
                 idx++;
                 
                 if (idx % 20 === 0) {
-                    progressCallback?.(language === 'zh' ? `生成覆盖层 ${idx}/${uniqueStates.size}...` : `Generating overlay ${idx}/${uniqueStates.size}...`);
+                    progressCallback?.(`Generating overlay ${idx}/${uniqueStates.size}...`);
                     // Short sleep to yield main thread
                     await new Promise(r => setTimeout(r, 0));
                 }
@@ -1337,10 +1371,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     /**
      * Format metadata to display text with colors (no ASS drawing, reliable text only)
      * @param {Object} data - Metadata object
-     * @param {string} lang - Language code ('en' or 'zh')
+     * @param {string} lang - Language code ('en' or 'fr')
      * @returns {string} Formatted display text with ASS color commands
      */
-    formatMetadataText(data, lang = 'zh') {
+    formatMetadataText(data, lang = 'en') {
         if (!data) return '';
         
         const parts = [];
@@ -1417,7 +1451,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
      * @param {number} height - Video height
      * @returns {string} Complete ASS file content
      */
-    generateAssContent(allMetadata, clipSegments, lang = 'zh', width = 1920, height = 1080) {
+    generateAssContent(allMetadata, clipSegments, lang = 'en', width = 1920, height = 1080) {
         let content = this.generateHeader(width, height);
         const dialogues = [];
         
@@ -1481,7 +1515,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
      * @param {string} lang - Language
      * @returns {string} ASS content
      */
-    generateForSingleCamera(allMetadata, clipSegments, lang = 'zh') {
+    generateForSingleCamera(allMetadata, clipSegments, lang = 'en') {
         return this.generateAssContent(allMetadata, clipSegments, lang, 1920, 1080);
     }
     
@@ -1493,7 +1527,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
      * @param {string} lang - Language
      * @returns {string} ASS content
      */
-    generateForGrid(allMetadata, clipSegments, cameraCount, lang = 'zh') {
+    generateForGrid(allMetadata, clipSegments, cameraCount, lang = 'en') {
         // Calculate grid dimensions
         let width, height;
         if (cameraCount <= 2) {
@@ -2025,32 +2059,32 @@ class MetadataManager {
         
         // Brake
         s.brake.textContent = d.brakeApplied 
-            ? (lang === 'zh' ? '踩下' : 'Applied') 
-            : (lang === 'zh' ? '未踩' : 'Released');
+            ? ('Applied') 
+            : ('Released');
         s.brake.className = 'stats-value' + (d.brakeApplied ? ' highlight-red' : '');
         
         // Blinker
         const blinkerLeft = d.blinkerOnLeft || false;
         const blinkerRight = d.blinkerOnRight || false;
         if (blinkerLeft && blinkerRight) {
-            s.blinker.textContent = lang === 'zh' ? '双闪' : 'Hazard';
+            s.blinker.textContent = 'Hazard';
             s.blinker.className = 'stats-value highlight-yellow';
         } else if (blinkerLeft) {
-            s.blinker.textContent = lang === 'zh' ? '← 左转' : '← Left';
+            s.blinker.textContent = '← Left';
             s.blinker.className = 'stats-value highlight-green';
         } else if (blinkerRight) {
-            s.blinker.textContent = lang === 'zh' ? '右转 →' : 'Right →';
+            s.blinker.textContent = 'Right →';
             s.blinker.className = 'stats-value highlight-green';
         } else {
-            s.blinker.textContent = lang === 'zh' ? '关' : 'Off';
+            s.blinker.textContent = 'Off';
             s.blinker.className = 'stats-value';
         }
         
         // Autopilot
         const apMap = {
-            'NONE': lang === 'zh' ? '无' : 'None',
+            'NONE': 'None',
             'SELF_DRIVING': 'FSD',
-            'AUTOSTEER': lang === 'zh' ? '自动转向' : 'Autosteer',
+            'AUTOSTEER': 'Autosteer',
             'TACC': 'TACC'
         };
         s.autopilot.textContent = apMap[d.autopilotState] || d.autopilotState || '--';
@@ -2176,50 +2210,6 @@ async function clearDirectoryHandle() {
 
 // --- End Device Detection ---
 
-// --- Coordinate Conversion Functions ---
-const x_pi = 3.14159265358979324 * 3000.0 / 180.0;
-const PI = 3.1415926535897932384626;
-const a = 6378245.0;
-const ee = 0.00669342162296594323;
-
-function transformlat(lng, lat) {
-    let ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + 0.1 * lng * lat + 0.2 * Math.sqrt(Math.abs(lng));
-    ret += (20.0 * Math.sin(6.0 * lng * PI) + 20.0 * Math.sin(2.0 * lng * PI)) * 2.0 / 3.0;
-    ret += (20.0 * Math.sin(lat * PI) + 40.0 * Math.sin(lat / 3.0 * PI)) * 2.0 / 3.0;
-    ret += (160.0 * Math.sin(lat / 12.0 * PI) + 320 * Math.sin(lat * PI / 30.0)) * 2.0 / 3.0;
-    return ret;
-}
-
-function transformlng(lng, lat) {
-    let ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + 0.1 * lng * lat + 0.1 * Math.sqrt(Math.abs(lng));
-    ret += (20.0 * Math.sin(6.0 * lng * PI) + 20.0 * Math.sin(2.0 * lng * PI)) * 2.0 / 3.0;
-    ret += (20.0 * Math.sin(lng * PI) + 40.0 * Math.sin(lng / 3.0 * PI)) * 2.0 / 3.0;
-    ret += (150.0 * Math.sin(lng / 12.0 * PI) + 300.0 * Math.sin(lng / 30.0 * PI)) * 2.0 / 3.0;
-    return ret;
-}
-
-function wgs84togcj02(lng, lat) {
-    let dlat = transformlat(lng - 105.0, lat - 35.0);
-    let dlng = transformlng(lng - 105.0, lat - 35.0);
-    const radlat = lat / 180.0 * PI;
-    let magic = Math.sin(radlat);
-    magic = 1 - ee * magic * magic;
-    const sqrtmagic = Math.sqrt(magic);
-    dlat = (dlat * 180.0) / ((a * (1 - ee)) / (magic * sqrtmagic) * PI);
-    dlng = (dlng * 180.0) / (a / sqrtmagic * Math.cos(radlat) * PI);
-    const mglat = lat + dlat;
-    const mglng = lng + dlng;
-    return [mglng, mglat];
-}
-
-function gcj02tobd09(lng, lat) {
-    const z = Math.sqrt(lng * lng + lat * lat) + 0.00002 * Math.sin(lat * x_pi);
-    const theta = Math.atan2(lat, lng) + 0.000003 * Math.cos(lng * x_pi);
-    const bd_lng = z * Math.cos(theta) + 0.0065;
-    const bd_lat = z * Math.sin(theta) + 0.006;
-    return [bd_lng, bd_lat];
-}
-// --- End Coordinate Conversion ---
 
 class VideoListComponent {
     constructor(elementId, eventHandler, viewer) {
@@ -2264,7 +2254,7 @@ class VideoListComponent {
             const thumbUrl = getFileUrl(event.thumbFile);
             const img = document.createElement('img');
             img.src = thumbUrl;
-            img.alt = '预览图';
+            img.alt = 'Preview';
             img.onload = () => URL.revokeObjectURL(img.src);
             thumbnailDiv.appendChild(img);
         } else {
@@ -2279,7 +2269,7 @@ class VideoListComponent {
         const infoDiv = document.createElement('div');
         infoDiv.className = 'video-info';
         const startTime = this.parseTimestamp(event.startTime);
-        const timeString = startTime.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const timeString = startTime.toLocaleString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
         
         let cityHtml = '';
         if (event.city && event.lat && event.lon) {
@@ -2393,16 +2383,8 @@ class MultiCameraPlayer {
                      }
                      // Set localized text (Simple check for window.viewer global or fallback)
                      // Note: We access window.viewer carefully
-                     const lang = (window.viewer && window.viewer.currentLanguage) || 'zh';
-                     const cameraNames = {
-                        front: { en: 'Front', zh: '前视' },
-                        left_pillar: { en: 'Left Pillar', zh: '左柱' },
-                        right_pillar: { en: 'Right Pillar', zh: '右柱' },
-                        back: { en: 'Back', zh: '后视' },
-                        left: { en: 'Left', zh: '左侧' },
-                        right: { en: 'Right', zh: '右侧' }
-                     };
-                     label.innerText = cameraNames[camera]?.[lang] || camera;
+                     const lang = (window.viewer && window.viewer.currentLanguage) || 'en';
+                     label.innerText = cameraLabel(camera, lang) || camera;
                      label.style.display = 'block';
                 }
             });
@@ -3190,7 +3172,7 @@ class ModernVideoControls {
                 newTime.setSeconds(newTime.getSeconds() + totalElapsedTime);
             }
 
-            const locale = this.viewer.currentLanguage === 'zh' ? 'zh-CN' : 'en-CA';
+            const locale = this.viewer.currentLanguage === 'fr' ? 'fr-FR' : 'en-CA';
             this.realTimeClock.textContent = newTime.toLocaleString(locale, {
                 year: 'numeric',
                 month: '2-digit',
@@ -3202,7 +3184,7 @@ class ModernVideoControls {
             }).replace(/\//g, '-').replace(',', '');
 
         } catch (e) {
-            this.realTimeClock.textContent = '错误';
+            this.realTimeClock.textContent = 'Error';
             console.error("Error updating real-time clock:", e);
         }
     }
@@ -3468,8 +3450,8 @@ class ModernVideoControls {
 }
 
 // WebM Duration Fixer
-// MediaRecorder 生成的 webm 文件缺少正确的 duration 元数据
-// 这个类通过解析和修改 EBML 结构来修复 duration
+// webm files produced by MediaRecorder lack correct duration metadata
+// This class repairs the duration by parsing and patching the EBML structure
 class WebmDurationFixer {
     constructor() {
         // EBML Element IDs
@@ -3489,7 +3471,7 @@ class WebmDurationFixer {
             const buffer = await blob.arrayBuffer();
             const view = new DataView(buffer);
             
-            // 查找 Segment 和 Info 元素的位置
+            // Locate the Segment and Info elements
             const segmentInfo = this.findElement(view, 0, this.SEGMENT_ID);
             if (!segmentInfo) {
                 console.warn('[WebmFixer] Segment not found, returning original blob');
@@ -3502,14 +3484,14 @@ class WebmDurationFixer {
                 return blob;
             }
             
-            // 查找 TimecodeScale（默认 1000000 纳秒 = 1 毫秒）
+            // Find TimecodeScale (default 1000000 ns = 1 ms)
             let timecodeScale = 1000000;
             const timecodeScaleInfo = this.findElement(view, infoInfo.dataStart, this.TIMECODE_SCALE_ID, infoInfo.dataStart + infoInfo.dataSize);
             if (timecodeScaleInfo) {
                 timecodeScale = this.readUint(view, timecodeScaleInfo.dataStart, timecodeScaleInfo.dataSize);
             }
             
-            // 如果没有提供 duration，尝试从最后一个 Cluster 的 Timecode 计算
+            // With no duration supplied, derive it from the last Cluster's Timecode
             if (!durationMs || durationMs <= 0) {
                 durationMs = this.calculateDurationFromClusters(view, segmentInfo.dataStart);
             }
@@ -3519,14 +3501,14 @@ class WebmDurationFixer {
                 return blob;
             }
             
-            // 将毫秒转换为 WebM 时间单位
+            // Convert milliseconds to WebM time units
             const durationWebm = (durationMs * 1000000) / timecodeScale;
             
-            // 查找现有的 Duration 元素
+            // Look for an existing Duration element
             const durationInfo = this.findElement(view, infoInfo.dataStart, this.DURATION_ID, infoInfo.dataStart + infoInfo.dataSize);
             
             if (durationInfo) {
-                // Duration 已存在，直接修改
+                // Duration already present - patch it in place
                 console.log('[WebmFixer] Duration element found, modifying in place');
                 const newBuffer = buffer.slice(0);
                 const newView = new DataView(newBuffer);
@@ -3535,7 +3517,7 @@ class WebmDurationFixer {
                 console.log('[WebmFixer] Duration fixed successfully');
                 return fixedBlob;
             } else {
-                // Duration 不存在，需要插入
+                // No Duration element - insert one
                 console.log('[WebmFixer] Duration element not found, inserting new element');
                 return this.insertDurationElement(buffer, infoInfo, durationWebm);
             }
@@ -3545,7 +3527,7 @@ class WebmDurationFixer {
         }
     }
     
-    // 从 Cluster 的 Timecode 计算总时长
+    // Compute total duration from the Cluster Timecodes
     calculateDurationFromClusters(view, segmentStart) {
         let maxTimecode = 0;
         let offset = segmentStart;
@@ -3555,7 +3537,7 @@ class WebmDurationFixer {
             const clusterInfo = this.findElement(view, offset, this.CLUSTER_ID, endOffset);
             if (!clusterInfo) break;
             
-            // 查找 Cluster 中的 Timecode
+            // Find the Timecode inside the Cluster
             const timecodeInfo = this.findElement(view, clusterInfo.dataStart, this.TIMECODE_ID, clusterInfo.dataStart + Math.min(clusterInfo.dataSize, 100));
             if (timecodeInfo) {
                 const timecode = this.readUint(view, timecodeInfo.dataStart, timecodeInfo.dataSize);
@@ -3567,37 +3549,37 @@ class WebmDurationFixer {
             offset = clusterInfo.dataStart + clusterInfo.dataSize;
         }
         
-        // 添加一些额外时间（最后一个 cluster 的大概时长）
+        // Add some slack (roughly the length of the last cluster)
         return maxTimecode > 0 ? maxTimecode + 1000 : 0;
     }
     
-    // 插入 Duration 元素到 Info 中
+    // Insert the Duration element into Info
     insertDurationElement(buffer, infoInfo, durationWebm) {
-        // Duration 元素: ID (2 bytes) + Size (1 byte) + Float64 (8 bytes) = 11 bytes
+        // Duration element: ID (2 bytes) + Size (1 byte) + Float64 (8 bytes) = 11 bytes
         const durationElementSize = 11;
         const durationElement = new Uint8Array(durationElementSize);
         const durationView = new DataView(durationElement.buffer);
         
-        // 写入 Duration ID (0x4489)
+        // Write the Duration ID (0x4489)
         durationElement[0] = 0x44;
         durationElement[1] = 0x89;
-        // 写入 Size (8 bytes for float64)
+        // Write Size (8 bytes for float64)
         durationElement[2] = 0x88; // VINT for 8
-        // 写入 Float64 值
+        // Write the Float64 value
         durationView.setFloat64(3, durationWebm, false);
         
-        // 创建新的 buffer
+        // Allocate the new buffer
         const insertPosition = infoInfo.dataStart;
         const newBuffer = new Uint8Array(buffer.byteLength + durationElementSize);
         
-        // 复制插入点之前的数据
+        // Copy everything before the insertion point
         newBuffer.set(new Uint8Array(buffer, 0, insertPosition), 0);
-        // 插入 Duration 元素
+        // Insert the Duration element
         newBuffer.set(durationElement, insertPosition);
-        // 复制插入点之后的数据
+        // Copy everything after the insertion point
         newBuffer.set(new Uint8Array(buffer, insertPosition), insertPosition + durationElementSize);
         
-        // 更新 Info 元素的大小
+        // Update the size of the Info element
         this.updateElementSize(newBuffer, infoInfo.sizeStart, infoInfo.sizeLength, infoInfo.dataSize + durationElementSize);
         
         const fixedBlob = new Blob([newBuffer], { type: 'video/webm' });
@@ -3605,9 +3587,9 @@ class WebmDurationFixer {
         return fixedBlob;
     }
     
-    // 更新元素大小（VINT 编码）
+    // Update an element size (VINT encoded)
     updateElementSize(buffer, sizeStart, sizeLength, newSize) {
-        // 简单实现：只支持固定长度的 size 更新
+        // Simple implementation: only fixed-length size updates are supported
         const view = new DataView(buffer.buffer);
         if (sizeLength === 1) {
             buffer[sizeStart] = 0x80 | newSize;
@@ -3626,7 +3608,7 @@ class WebmDurationFixer {
         }
     }
     
-    // 查找 EBML 元素
+    // Find an EBML element
     findElement(view, startOffset, targetId, endOffset) {
         endOffset = endOffset || view.byteLength;
         let offset = startOffset;
@@ -3652,7 +3634,7 @@ class WebmDurationFixer {
                 };
             }
             
-            // 对于容器元素（Segment, Info），不跳过内容
+            // For container elements (Segment, Info) do not skip the contents
             if (id === this.SEGMENT_ID || id === this.INFO_ID) {
                 offset = dataStart;
             } else {
@@ -3663,7 +3645,7 @@ class WebmDurationFixer {
         return null;
     }
     
-    // 读取 VINT ID
+    // Read a VINT ID
     readVintId(view, offset) {
         if (offset >= view.byteLength) return { id: 0, idLength: 0 };
         
@@ -3690,7 +3672,7 @@ class WebmDurationFixer {
         return { id, idLength };
     }
     
-    // 读取 VINT 大小
+    // Read a VINT size
     readVint(view, offset) {
         if (offset >= view.byteLength) return { value: 0, length: 0 };
         
@@ -3733,7 +3715,7 @@ class WebmDurationFixer {
         return { value, length };
     }
     
-    // 读取无符号整数
+    // Read an unsigned integer
     readUint(view, offset, length) {
         let value = 0;
         for (let i = 0; i < length; i++) {
@@ -3742,13 +3724,13 @@ class WebmDurationFixer {
         return value;
     }
     
-    // 写入 Float64
+    // Write a Float64
     writeFloat64(view, offset, value) {
         view.setFloat64(offset, value, false); // big-endian
     }
 }
 
-// 全局 WebM Duration Fixer 实例（单例）
+// Global WebM Duration Fixer instance (singleton)
 const webmDurationFixer = new WebmDurationFixer();
 
 // Video Clip Processor using Canvas API
@@ -4053,7 +4035,7 @@ class VideoClipProcessor {
         let FFmpegLib = window.FFmpegWASM || window.FFmpeg;
         
         if (!FFmpegLib) {
-            progressCallback?.('加载 FFmpeg 库...');
+            progressCallback?.('Loading FFmpeg library...');
             console.log('[FFmpeg] Dynamically loading FFmpeg WASM library...');
             
             try {
@@ -4094,7 +4076,7 @@ class VideoClipProcessor {
             this.ffmpeg.on('progress', ({ progress, time }) => {
                  // progress is 0-1
                  if (this.ffmpegProgressCallback) {
-                     this.ffmpegProgressCallback(`编码中... ${(progress * 100).toFixed(0)}%`);
+                     this.ffmpegProgressCallback(`Encoding... ${(progress * 100).toFixed(0)}%`);
                  }
             });
         }
@@ -4104,10 +4086,10 @@ class VideoClipProcessor {
         const useMultiThread = supportsMultiThread; // Re-enabled with scale optimization
         
         if (useMultiThread) {
-            progressCallback?.('加载 FFmpeg 多线程核心模块...');
+            progressCallback?.('Loading FFmpeg multi-threaded core...');
             console.log('[FFmpeg] Loading FFmpeg WASM core (multi-threaded)...');
         } else {
-            progressCallback?.('加载 FFmpeg 核心模块...');
+            progressCallback?.('Loading FFmpeg core...');
             console.log('[FFmpeg] Loading FFmpeg WASM core (single-threaded)...');
         }
         
@@ -4122,23 +4104,23 @@ class VideoClipProcessor {
         try {
             if (useMultiThread) {
                 // Multi-threaded version - faster but requires COOP/COEP headers
-                progressCallback?.('加载 FFmpeg 核心文件 (使用本地缓存)...');
+                progressCallback?.('Loading FFmpeg core files (from local cache)...');
                 const [coreURL, wasmURL, workerURL] = await Promise.all([
                     this.toBlobURLWithCache(`${baseURLMT}/ffmpeg-core.js`, 'text/javascript', progressCallback),
                     this.toBlobURLWithCache(`${baseURLMT}/ffmpeg-core.wasm`, 'application/wasm', progressCallback),
                     this.toBlobURLWithCache(`${baseURLMT}/ffmpeg-core.worker.js`, 'text/javascript', progressCallback),
                 ]);
-                progressCallback?.('初始化 FFmpeg...');
+                progressCallback?.('Initializing FFmpeg...');
                 await this.ffmpeg.load({ coreURL, wasmURL, workerURL });
                 this.ffmpegMultiThread = true;
             } else {
                 // Single-threaded version - more stable
-                progressCallback?.('加载 FFmpeg 核心文件 (使用本地缓存)...');
+                progressCallback?.('Loading FFmpeg core files (from local cache)...');
                 const [coreURL, wasmURL] = await Promise.all([
                     this.toBlobURLWithCache(`${baseURL}/ffmpeg-core.js`, 'text/javascript', progressCallback),
                     this.toBlobURLWithCache(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm', progressCallback),
                 ]);
-                progressCallback?.('初始化 FFmpeg...');
+                progressCallback?.('Initializing FFmpeg...');
                 await this.ffmpeg.load({ coreURL, wasmURL });
                 this.ffmpegMultiThread = false;
             }
@@ -4146,7 +4128,7 @@ class VideoClipProcessor {
             // If multi-thread fails, fallback to single-thread
             if (useMultiThread) {
                 console.warn('[FFmpeg] Multi-thread load failed, falling back to single-thread:', mtError);
-                progressCallback?.('多线程加载失败，使用单线程模式...');
+                progressCallback?.('Multi-threading unavailable, falling back to single thread...');
                 const [coreURL, wasmURL] = await Promise.all([
                     this.toBlobURLWithCache(`${baseURL}/ffmpeg-core.js`, 'text/javascript', progressCallback),
                     this.toBlobURLWithCache(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm', progressCallback),
@@ -4167,11 +4149,11 @@ class VideoClipProcessor {
     // Fix WebM metadata using FFmpeg WASM (for streamed files)
     async fixWebmWithFFmpeg(fileHandle, progressCallback) {
         try {
-            progressCallback?.(this.currentLanguage === 'zh' ? '加载 FFmpeg 修复模块...' : 'Loading FFmpeg repair module...');
+            progressCallback?.('Loading FFmpeg repair module...');
             const ffmpeg = await this.loadFFmpeg(progressCallback);
             
             // Read the file content
-            progressCallback?.(this.currentLanguage === 'zh' ? '读取视频文件...' : 'Reading video file...');
+            progressCallback?.('Reading video file...');
             const file = await fileHandle.getFile();
             const inputData = new Uint8Array(await file.arrayBuffer());
             
@@ -4179,7 +4161,7 @@ class VideoClipProcessor {
             await ffmpeg.writeFile('input.webm', inputData);
             
             // Run FFmpeg to remux (copy streams, fix metadata)
-            progressCallback?.(this.currentLanguage === 'zh' ? '修复视频元数据...' : 'Repairing video metadata...');
+            progressCallback?.('Repairing video metadata...');
             await ffmpeg.exec([
                 '-i', 'input.webm',
                 '-c', 'copy',
@@ -4199,7 +4181,7 @@ class VideoClipProcessor {
             }
             
             // Write back to the original file
-            progressCallback?.(this.currentLanguage === 'zh' ? '保存修复后的视频...' : 'Saving repaired video...');
+            progressCallback?.('Saving repaired video...');
             const writable = await fileHandle.createWritable();
             await writable.write(outputData);
             await writable.close();
@@ -4262,7 +4244,7 @@ class VideoClipProcessor {
             // Load Font if needed (once)
             let fontFile = null;
             if (addTimestamp) {
-                progressCallback?.('加载字体...');
+                progressCallback?.('Loading fonts...');
                 try {
                      const fontUrl = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf';
                      const fontData = await this.fetchFileAsUint8Array(fontUrl);
@@ -4283,7 +4265,7 @@ class VideoClipProcessor {
                 const seg = clipSegments[i];
                 const segmentFiles = []; // Files for this segment only
                 
-                progressCallback?.(`处理片段 ${i + 1}/${clipSegments.length}...`);
+                progressCallback?.(`Processing segment ${i + 1}/${clipSegments.length}...`);
                 
                 const cameraInputs = {};
                 
@@ -4333,7 +4315,7 @@ class VideoClipProcessor {
                     // Add clipStart offset
                     const currentSegTime = new Date(segBaseTime.getTime() + seg.clipStart * 1000);
                     
-                    segmentTimestampStr = currentSegTime.toLocaleString('zh-CN', {
+                    segmentTimestampStr = currentSegTime.toLocaleString('en-CA', {
                         year: 'numeric', month: '2-digit', day: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit',
                         hour12: false
@@ -4423,7 +4405,7 @@ class VideoClipProcessor {
                 
                 if (writable) {
                      // Streaming write to disk directly
-                     progressCallback?.(`写入磁盘 (段 ${i + 1})...`);
+                     progressCallback?.(`Writing to disk (segment ${i + 1})...`);
                      await writable.write(segData);
                 } else {
                      // Convert to Blob immediately
@@ -4451,7 +4433,7 @@ class VideoClipProcessor {
             }
             
             // 3. Concat all segments (Memory Mode Fallback)
-            progressCallback?.('合并片段...');
+            progressCallback?.('Merging segments...');
             
             try {
                 const allTsBlob = new Blob(tsBlobs, { type: 'video/mp2t' });
@@ -4469,7 +4451,7 @@ class VideoClipProcessor {
                 await ffmpeg.writeFile('all.ts', allTsUint8);
                 allCreatedFiles.push('all.ts');
                 
-                progressCallback?.('封装 MP4...');
+                progressCallback?.('Muxing MP4...');
                 const args = [
                     '-i', 'all.ts',
                     '-c', 'copy',
@@ -4511,7 +4493,7 @@ class VideoClipProcessor {
             for (const f of allCreatedFiles) {
                 try { await ffmpeg.deleteFile(f); } catch {}
             }
-            throw new Error('浏览器导出失败: ' + e.message + "\\n建议使用 Chrome 浏览器或尝试本地应用模式。");
+            throw new Error('Browser export failed: ' + e.message + "\\nTry Chrome, or switch to the local application mode.");
         }
     }
 
@@ -4573,7 +4555,7 @@ class VideoClipProcessor {
      */
     async executeFFmpegWithProgress(args, totalDuration, progressCallback, progressPrefix) {
         if (!progressPrefix) {
-            progressPrefix = this.currentLanguage === 'zh' ? '编码中...' : 'Encoding...';
+            progressPrefix = 'Encoding...';
         }
         const tauri = window.__TAURI__;
         const command = this.createFFmpegCommand(args);
@@ -4603,8 +4585,8 @@ class VideoClipProcessor {
                 if (code === 0) {
                     resolve({ code: 0, stderr });
                 } else {
-                    const lastError = stderr.split('\n').filter(l => l.includes('Error') || l.includes('error')).pop() || '未知错误';
-                    reject(new Error(`FFmpeg 错误 (code ${code}): ${lastError}`));
+                    const lastError = stderr.split('\n').filter(l => l.includes('Error') || l.includes('error')).pop() || 'Unknown error';
+                    reject(new Error(`FFmpeg error (code ${code}): ${lastError}`));
                 }
             };
 
@@ -4743,13 +4725,13 @@ class VideoClipProcessor {
             ];
             
             console.log('Running ffmpeg:', args);
-            progressCallback?.(this.currentLanguage === 'zh' ? `FFmpeg 极速导出中...` : `FFmpeg Fast Exporting...`);
+            progressCallback?.(`FFmpeg Fast Exporting...`);
             
             const totalDuration = clipSegments.reduce((sum, seg) => {
                 const dur = (seg.clipEnd || 60) - (seg.clipStart || 0);
                 return sum + (dur > 0 ? dur : 0);
             }, 0);
-            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, this.currentLanguage === 'zh' ? '极速导出...' : 'Fast Exporting...');
+            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, 'Fast Exporting...');
             
             // Read result
             const binary = await fs.readFile(outputPath);
@@ -4772,7 +4754,7 @@ class VideoClipProcessor {
 
 
 
-    async processClip(segments, cameras, startTime, endTime, addTimestamp, addMetadata, mergeGrid, eventStartTime, progressCallback, useLocalFFmpeg = false, language = 'zh', fileHandle = null, metadataManager = null) {
+    async processClip(segments, cameras, startTime, endTime, addTimestamp, addMetadata, mergeGrid, eventStartTime, progressCallback, useLocalFFmpeg = false, language = 'en', fileHandle = null, metadataManager = null) {
         try {
             // Reset cancellation state
             this.isCancelled = false;
@@ -4783,29 +4765,29 @@ class VideoClipProcessor {
             const clipSegments = this.getSegmentsForTimeRange(segments, startTime, endTime);
             
             if (clipSegments.length === 0) {
-                throw new Error('未找到有效的视频片段');
+                throw new Error('No valid video segments found');
             }
 
             // 1. Use local FFmpeg if requested (Tauri desktop only)
             if (useLocalFFmpeg && window.__TAURI__) {
                 const hasFFmpeg = await this.checkFFmpeg();
                 if (!hasFFmpeg) {
-                    throw new Error('未检测到 FFmpeg，请先安装 FFmpeg 并确保其在系统 PATH 中');
+                    throw new Error('FFmpeg not found. Install FFmpeg and make sure it is in your system PATH');
                 }
                 
                 console.log('[VideoClipProcessor] Using local FFmpeg for export');
                 
                 if (mergeGrid && cameras.length > 1) {
                     // FFmpeg grid merge with optional timestamp and metadata
-                    progressCallback?.(this.currentLanguage === 'zh' ? 'FFmpeg 合成四宫格视频...' : 'FFmpeg Merging Grid Video...');
+                    progressCallback?.('FFmpeg Merging Grid Video...');
                     const result = await this.processWithFFmpegGrid(clipSegments, cameras, addTimestamp, addMetadata, eventStartTime, progressCallback);
                     return [result];
                 } else {
                     // FFmpeg single camera export
                     const results = [];
                     for (const camera of cameras) {
-                        if (this.isCancelled) throw new Error(this.currentLanguage === 'zh' ? '导出已取消' : 'Export Cancelled');
-                        progressCallback?.(this.currentLanguage === 'zh' ? `FFmpeg 极速导出 ${camera}...` : `FFmpeg Fast Exporting ${camera}...`);
+                        if (this.isCancelled) throw new Error('Export Cancelled');
+                        progressCallback?.(`FFmpeg Fast Exporting ${camera}...`);
                         const result = await this.processWithFFmpegFull(clipSegments, camera, addTimestamp, addMetadata, eventStartTime, progressCallback);
                         results.push(result);
                     }
@@ -4818,7 +4800,7 @@ class VideoClipProcessor {
             if (hasFFmpeg && !addTimestamp && !addMetadata && !mergeGrid) {
                  const results = [];
                  for (const camera of cameras) {
-                     progressCallback?.(`极速导出 ${camera}...`);
+                     progressCallback?.(`Fast exporting ${camera}...`);
                      const blob = await this.processWithFFmpeg(clipSegments, camera, progressCallback);
                      results.push({ camera, blob });
                  }
@@ -4851,9 +4833,9 @@ class VideoClipProcessor {
             // For now, let's only enable it if fileHandle is present to test the fix.
             
             if (fileHandle) {
-                 progressCallback?.('正在使用流式导出模式 (Canvas)...');
+                 progressCallback?.('Using streaming export mode (Canvas)...');
                  
-                 // 如果是合并四宫格
+                 // Grid-merge path
                  if (mergeGrid && cameras.length > 1) {
                      const result = await this.createGridVideoFromSegments(
                         clipSegments,
@@ -4866,12 +4848,12 @@ class VideoClipProcessor {
                         progressCallback,
                         fileHandle
                     );
-                    // result 可能是 Blob 或 { saved: true, blob: ... }
+                    // result may be a Blob or { saved: true, blob: ... }
                     const blob = result.saved ? result.blob : result;
                     const saved = !!result.saved;
                     return [{ camera: 'grid', blob: blob, saved: saved }];
                  } else {
-                     // 单个摄像头处理
+                     // Single-camera path
                      const results = [];
                      for (const camera of cameras) {
                          const result = await this.processVideoWithTimestamp(
@@ -4895,7 +4877,7 @@ class VideoClipProcessor {
 
             // 3. If merging as grid, process all cameras together (Canvas method)
             if (mergeGrid && cameras.length > 1) {
-                progressCallback?.('合成四宫格视频...');
+                progressCallback?.('Merging grid video...');
                 const gridBlob = await this.createGridVideoFromSegments(
                     clipSegments,
                     cameras,
@@ -4913,7 +4895,7 @@ class VideoClipProcessor {
             const results = [];
             
             for (const camera of cameras) {
-                progressCallback?.(`处理 ${camera} 摄像头...`);
+                progressCallback?.(`Processing ${camera} camera...`);
                 
                 const videoBlob = await this.processVideoWithTimestamp(
                     clipSegments, 
@@ -4947,7 +4929,7 @@ class VideoClipProcessor {
         const shell = tauri.shell;
         
         const firstFile = clipSegments[0].segment.files[camera];
-        if (!firstFile || !firstFile.path) throw new Error(`${camera} 摄像头文件路径未找到`);
+        if (!firstFile || !firstFile.path) throw new Error(`File path not found for the ${camera} camera`);
         
         const pathSeparator = firstFile.path.includes('\\') ? '\\' : '/';
         const lastSepIdx = firstFile.path.lastIndexOf(pathSeparator);
@@ -4992,7 +4974,7 @@ class VideoClipProcessor {
             let overlayInfo = null;
             
             if (addMetadata && this.metadataManager) {
-                progressCallback?.(`加载 ${camera} 元数据...`);
+                progressCallback?.(`Loading ${camera} metadata...`);
                 allMetadata = await this.loadMetadataForSegments(clipSegments, camera, progressCallback);
                 
                 if (allMetadata && allMetadata.length > 0) {
@@ -5000,7 +4982,7 @@ class VideoClipProcessor {
                     const videoWidth = 1280;
                     const videoHeight = 960;
                     
-                    progressCallback?.(`生成元数据图标覆盖层...`);
+                    progressCallback?.(`Generating metadata overlays...`);
                     try {
                         overlayInfo = await metadataOverlayGenerator.generateOverlayPngs(
                             allMetadata,
@@ -5143,16 +5125,16 @@ class VideoClipProcessor {
             }
             
             console.log('[FFmpeg] Running:', args.join(' '));
-            progressCallback?.(this.currentLanguage === 'zh' ? `FFmpeg 处理 ${camera}...` : `FFmpeg Processing ${camera}...`);
+            progressCallback?.(`FFmpeg Processing ${camera}...`);
             
             // totalDuration already calculated at line 4166
-            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, this.currentLanguage === 'zh' ? `处理 ${camera}...` : `Processing ${camera}...`);
-            progressCallback?.(this.currentLanguage === 'zh' ? `处理 ${camera}: 100%` : `Processing ${camera}: 100%`);
+            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, `Processing ${camera}...`);
+            progressCallback?.(`Processing ${camera}: 100%`);
             
             console.log('[FFmpeg] Finished processing camera:', camera);
             
             if (output.code !== 0) {
-                throw new Error(`FFmpeg 错误 (code ${output.code}): ${output.stderr || output.stdout || '未知错误'}`);
+                throw new Error(`FFmpeg error (code ${output.code}): ${output.stderr || output.stdout || 'Unknown error'}`);
             }
             
             // Cleanup temp files
@@ -5233,10 +5215,10 @@ class VideoClipProcessor {
             clipSegments.some(seg => seg.segment.files[cam] && seg.segment.files[cam].path)
         );
         
-        if (activeCameras.length === 0) throw new Error('没有可导出的视频流');
+        if (activeCameras.length === 0) throw new Error('No video streams available to export');
         
         const firstFile = clipSegments.find(seg => seg.segment.files[activeCameras[0]] && seg.segment.files[activeCameras[0]].path)?.segment.files[activeCameras[0]];
-        if (!firstFile) throw new Error('文件路径未找到');
+        if (!firstFile) throw new Error('File path not found');
         
         const pathSeparator = firstFile.path.includes('\\') ? '\\' : '/';
         const lastSepIdx = firstFile.path.lastIndexOf(pathSeparator);
@@ -5284,7 +5266,7 @@ class VideoClipProcessor {
             
             // Update activeCameras to only include cameras with valid files
             if (validCameras.length === 0) {
-                throw new Error('没有可导出的视频文件');
+                throw new Error('No video files available to export');
             }
             if (validCameras.length !== activeCameras.length) {
                 console.log(`[FFmpeg Grid] Reduced cameras from ${activeCameras.length} to ${validCameras.length}`);
@@ -5313,13 +5295,13 @@ class VideoClipProcessor {
             }
             
             if (addMetadata && this.metadataManager) {
-                progressCallback?.('加载元数据...');
+                progressCallback?.('Loading metadata...');
                 // Use first camera for metadata (front camera preferred)
                 const metadataCamera = activeCameras.includes('front') ? 'front' : activeCameras[0];
                 allMetadata = await this.loadMetadataForSegments(clipSegments, metadataCamera, progressCallback);
                 
                 if (allMetadata && allMetadata.length > 0) {
-                    progressCallback?.(this.currentLanguage === 'zh' ? `生成元数据图标覆盖层...` : `Generating metadata overlays...`);
+                    progressCallback?.(`Generating metadata overlays...`);
                     try {
                         overlayInfo = await metadataOverlayGenerator.generateOverlayPngs(
                             allMetadata,
@@ -5353,20 +5335,12 @@ class VideoClipProcessor {
             let filterComplex = '';
             
             // Camera names for localization
-            const lang = this.currentLanguage || 'zh';
-            const cameraNames = {
-                front: { en: 'Front', zh: '前视' },
-                left_pillar: { en: 'Left Pillar', zh: '左柱' },
-                right_pillar: { en: 'Right Pillar', zh: '右柱' },
-                back: { en: 'Back', zh: '后视' },
-                left: { en: 'Left', zh: '左侧' },
-                right: { en: 'Right', zh: '右侧' }
-            };
+            const lang = this.currentLanguage || 'en';
 
             // Scale each input and add label
             for (let i = 0; i < count; i++) {
                 const camName = activeCameras[i];
-                const labelText = cameraNames[camName]?.[lang] || camName.toUpperCase();
+                const labelText = cameraLabel(camName, lang) || camName.toUpperCase();
                 
                 // Determine font file path based on OS for labels (use CJK-compatible font)
                 let fontOption = "";
@@ -5517,15 +5491,15 @@ class VideoClipProcessor {
             console.log('[FFmpeg Grid] Filter script content (last 500):', filterComplex.substring(filterComplex.length - 500));
             console.log('[FFmpeg Grid] Running with', activeCameras.length, 'cameras, duration:', totalDuration);
             console.log('[FFmpeg Grid] Args:', args.join(' '));
-            progressCallback?.(this.currentLanguage === 'zh' ? 'FFmpeg 合成四宫格...' : 'FFmpeg Merging Grid...');
+            progressCallback?.('FFmpeg Merging Grid...');
             
-            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, this.currentLanguage === 'zh' ? '合成四宫格...' : 'Merging Grid...');
-            progressCallback?.(this.currentLanguage === 'zh' ? '合成四宫格: 100%' : 'Merging Grid: 100%');
+            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, 'Merging Grid...');
+            progressCallback?.('Merging Grid: 100%');
             
             console.log('[FFmpeg Grid] Finished processing grid');
             
             if (output.code !== 0) {
-                throw new Error(`FFmpeg 错误 (code ${output.code}): ${output.stderr || output.stdout || '未知错误'}`);
+                throw new Error(`FFmpeg error (code ${output.code}): ${output.stderr || output.stdout || 'Unknown error'}`);
             }
             
             // Cleanup temp files
@@ -5592,15 +5566,15 @@ class VideoClipProcessor {
     
     async processVideoWithTimestamp(clipSegments, camera, totalStartTime, totalEndTime, addTimestamp, addMetadata, eventStartTime, progressCallback, fileHandle = null) {
         if (clipSegments.length === 0) {
-            throw new Error('没有可用的视频片段');
+            throw new Error('No video segments available');
         }
         
-        progressCallback?.(this.currentLanguage === 'zh' ? `处理 ${camera} 摄像头 (${clipSegments.length} 个片段)...` : `Processing ${camera} camera (${clipSegments.length} segments)...`);
+        progressCallback?.(`Processing ${camera} camera (${clipSegments.length} segments)...`);
         
         // Load metadata for all segments if addMetadata is enabled
         let allMetadata = [];
         if (addMetadata && this.metadataManager) {
-            progressCallback?.(this.currentLanguage === 'zh' ? '加载行驶数据...' : 'Loading driving data...');
+            progressCallback?.('Loading driving data...');
             allMetadata = await this.loadMetadataForSegments(clipSegments, camera, progressCallback);
             // Load SVG icons for metadata overlay
             await this.loadMetadataIcons();
@@ -5745,10 +5719,10 @@ class VideoClipProcessor {
             const videoFile = clipSegment.segment.files[camera];
             
             if (!videoFile) {
-                throw new Error(`${camera} 摄像头在片段 ${i + 1} 中没有可用的视频文件`);
+                throw new Error(`No video file available for the ${camera} camera in segment ${i + 1}`);
             }
             
-            progressCallback?.(`加载片段 ${i + 1}/${clipSegments.length}...`);
+            progressCallback?.(`Loading segment ${i + 1}/${clipSegments.length}...`);
             
             // Load video for this segment only
             const video = document.createElement('video');
@@ -5845,7 +5819,7 @@ class VideoClipProcessor {
                             
                             if (addTimestamp) {
                                 const currentTime = new Date(segmentStartTimestamp.getTime() + (video.currentTime - actualClipStart) * 1000);
-                                const timeString = currentTime.toLocaleString('zh-CN', {
+                                const timeString = currentTime.toLocaleString('en-CA', {
                                     year: 'numeric',
                                     month: '2-digit',
                                     day: '2-digit',
@@ -5868,7 +5842,7 @@ class VideoClipProcessor {
                             
                             if (processedFrames % 30 === 0) {
                                 const progress = Math.min(100, Math.round((processedFrames / totalFrames) * 100));
-                                progressCallback?.(`处理 ${camera}: ${progress}%`);
+                                progressCallback?.(`Processing ${camera}: ${progress}%`);
                             }
                         }
                         
@@ -5915,7 +5889,7 @@ class VideoClipProcessor {
                         
                         if (addTimestamp) {
                             const currentTime = new Date(segmentStartTimestamp.getTime() + (t - actualClipStart) * 1000);
-                            const timeString = currentTime.toLocaleString('zh-CN', {
+                            const timeString = currentTime.toLocaleString('en-CA', {
                                 year: 'numeric',
                                 month: '2-digit',
                                 day: '2-digit',
@@ -5938,7 +5912,7 @@ class VideoClipProcessor {
                         
                         if (processedFrames % 30 === 0) {
                             const progress = Math.min(100, Math.round((processedFrames / totalFrames) * 100));
-                            progressCallback?.(`处理 ${camera}: ${progress}%`);
+                            progressCallback?.(`Processing ${camera}: ${progress}%`);
                         }
                         
                         setTimeout(tick, frameInterval);
@@ -6000,29 +5974,29 @@ class VideoClipProcessor {
                     const fixed = await this.fixWebmWithFFmpeg(fileHandle, progressCallback);
                     if (!fixed) {
                         console.warn('[Grid Video Export] FFmpeg metadata fix failed, video may have inaccurate duration');
-                        progressCallback?.('视频已保存（元数据修复跳过）');
+                        progressCallback?.('Video saved (metadata repair skipped)');
                     }
                 } catch (e) {
                     console.warn('[Grid Video Export] FFmpeg metadata fix error:', e);
-                    progressCallback?.('视频已保存（元数据修复跳过）');
+                    progressCallback?.('Video saved (metadata repair skipped)');
                 }
             }
             return result;
         }
 
-        progressCallback?.('修复视频元数据...');
+        progressCallback?.('Repairing video metadata...');
         const fixedBlob = await webmDurationFixer.fixDuration(result, calculatedDuration);
         
         return fixedBlob;
     }
     
     async createGridVideoFromSegments(clipSegments, cameras, totalStartTime, totalEndTime, addTimestamp, addMetadata, eventStartTime, progressCallback, fileHandle = null) {
-        progressCallback?.(this.currentLanguage === 'zh' ? `准备四宫格视频 (${clipSegments.length} 个片段)...` : `Preparing grid video (${clipSegments.length} segments)...`);
+        progressCallback?.(`Preparing grid video (${clipSegments.length} segments)...`);
         
         // Load metadata for all segments if addMetadata is enabled
         let allMetadata = [];
         if (addMetadata && this.metadataManager) {
-            progressCallback?.(this.currentLanguage === 'zh' ? '加载行驶数据...' : 'Loading driving data...');
+            progressCallback?.('Loading driving data...');
             // Use front camera for metadata (it's the same for all cameras)
             allMetadata = await this.loadMetadataForSegments(clipSegments, cameras[0], progressCallback);
             // Load SVG icons for metadata overlay
@@ -6220,7 +6194,7 @@ class VideoClipProcessor {
         for (let i = 0; i < clipSegments.length; i++) {
             const clipSegment = clipSegments[i];
             
-            progressCallback?.(`加载片段 ${i + 1}/${clipSegments.length}...`);
+            progressCallback?.(`Loading segment ${i + 1}/${clipSegments.length}...`);
             
             // Load videos for this segment only
             const videos = {};
@@ -6255,7 +6229,7 @@ class VideoClipProcessor {
             }
             
             if (Object.keys(videos).length === 0) {
-                throw new Error(`片段 ${i + 1} 没有可用的视频文件`);
+                throw new Error(`No video file available for segment ${i + 1}`);
             }
 
             const videoCountLoaded = Object.keys(videos).length;
@@ -6357,7 +6331,8 @@ class VideoClipProcessor {
             this.ctx.fillStyle = '#000';
             this.ctx.fillRect(0, 0, gridCanvasWidth, gridCanvasHeight);
             
-            // 2x2 特殊逻辑：等比缩小、不裁剪；同一行的两张图水平拼成一组，整组居中，保证左右贴合无外部空隙
+            // 2x2 special case: scale to fit without cropping; the two tiles on a row are joined
+                    // horizontally and the pair is centred, so they touch with no outer gap
             const is2x2 = gridCols === 2 && gridRows === 2;
 
             if (is2x2) {
@@ -6367,13 +6342,13 @@ class VideoClipProcessor {
                     const y = pos.y * cellHeight;
                     const srcW = video.videoWidth || cellWidth;
                     const srcH = video.videoHeight || cellHeight;
-                    const scale = Math.min(cellWidth / srcW, cellHeight / srcH); // contain: 不裁剪
+                    const scale = Math.min(cellWidth / srcW, cellHeight / srcH); // contain: no cropping
                     const drawW = Math.ceil(srcW * scale);
                     const drawH = Math.ceil(srcH * scale);
                     return { camera, video, x, y, row: pos.y, drawW, drawH };
                 });
 
-                // 按行处理，每行两张：总宽度 <= 1920，整行居中；左右紧贴
+                // Row by row, two per row: total width <= 1920, row centred, tiles flush
                 const rows = new Map();
                 for (const item of layout) {
                     if (!rows.has(item.row)) rows.set(item.row, []);
@@ -6381,7 +6356,7 @@ class VideoClipProcessor {
                 }
 
                 for (const [, items] of rows) {
-                    items.sort((a, b) => a.x - b.x); // 左右顺序
+                    items.sort((a, b) => a.x - b.x); // left-to-right order
                     const totalW = items.reduce((sum, it) => sum + it.drawW, 0);
                     const startX = Math.floor((gridCanvasWidth - totalW) / 2);
                     let cursorX = startX;
@@ -6395,22 +6370,14 @@ class VideoClipProcessor {
                         const labelX = offsetX + 4;
                         const labelY = item.y + 4;
                         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                        this.ctx.font = 'bold 12px "Noto Sans SC", Arial';
-                        const lang = this.currentLanguage || 'zh';
-                        const cameraNames = {
-                            front: { en: 'Front', zh: '前视' },
-                            left_pillar: { en: 'Left Pillar', zh: '左柱' },
-                            right_pillar: { en: 'Right Pillar', zh: '右柱' },
-                            back: { en: 'Back', zh: '后视' },
-                            left: { en: 'Left', zh: '左侧' },
-                            right: { en: 'Right', zh: '右侧' }
-                        };
-                        const labelText = cameraNames[item.camera]?.[lang] || item.camera.toUpperCase();
+                        this.ctx.font = 'bold 12px Arial, sans-serif';
+                        const lang = this.currentLanguage || 'en';
+                        const labelText = cameraLabel(item.camera, lang) || item.camera.toUpperCase();
                         const textW = this.ctx.measureText(labelText).width;
                         const padX = 6;
                         const padY = 4;
                         const boxW = Math.ceil(textW + padX * 2);
-                        const boxH = 20 + padY * 0; // 20 高度够 12px 字体
+                        const boxH = 20 + padY * 0; // 20px is tall enough for a 12px font
                         this.ctx.fillRect(labelX, labelY, boxW, boxH);
                         this.ctx.fillStyle = '#fff';
                         this.ctx.fillText(labelText, labelX + padX, labelY + 14);
@@ -6427,7 +6394,7 @@ class VideoClipProcessor {
 
                 const srcW = video.videoWidth || cellWidth;
                 const srcH = video.videoHeight || cellHeight;
-                const scale = Math.min(cellWidth / srcW, cellHeight / srcH); // contain: 不裁剪
+                const scale = Math.min(cellWidth / srcW, cellHeight / srcH); // contain: no cropping
                 const drawW = Math.ceil(srcW * scale);
                 const drawH = Math.ceil(srcH * scale);
 
@@ -6441,18 +6408,10 @@ class VideoClipProcessor {
                 const labelX = x + 4;
                 const labelY = y + 4;
                 this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                this.ctx.font = 'bold 12px "Noto Sans SC", Arial';
+                this.ctx.font = 'bold 12px Arial, sans-serif';
                 
-                const lang = this.currentLanguage || 'zh';
-                const cameraNames = {
-                    front: { en: 'Front', zh: '前视' },
-                    left_pillar: { en: 'Left Pillar', zh: '左柱' },
-                    right_pillar: { en: 'Right Pillar', zh: '右柱' },
-                    back: { en: 'Back', zh: '后视' },
-                    left: { en: 'Left', zh: '左侧' },
-                    right: { en: 'Right', zh: '右侧' }
-                };
-                const labelText = cameraNames[camera]?.[lang] || camera.toUpperCase();
+                const lang = this.currentLanguage || 'en';
+                const labelText = cameraLabel(camera, lang) || camera.toUpperCase();
                 const textW = this.ctx.measureText(labelText).width;
                 const padX = 6;
                 const padY = 4;
@@ -6474,7 +6433,7 @@ class VideoClipProcessor {
             // Draw timestamp if needed
             if (addTimestamp) {
                 const currentTime = new Date(segmentStartTimestamp.getTime() + (videoTime - actualClipStart) * 1000);
-                const timeString = currentTime.toLocaleString('zh-CN', {
+                const timeString = currentTime.toLocaleString('en-CA', {
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
@@ -6484,13 +6443,13 @@ class VideoClipProcessor {
                     hour12: false
                 }).replace(/\//g, '-');
                 
-                this.ctx.font = 'bold 20px "Noto Sans SC", Arial';
+                this.ctx.font = 'bold 20px Arial, sans-serif';
                 const textWidth = this.ctx.measureText(timeString).width;
                 const padding = 10;
                 const boxWidth = textWidth + padding * 2;
                 const boxHeight = 32;
 
-                // 放到右上角单元格的右上侧内边距位置
+                // Place it in the top-right cell, inside the top-right padding
                 const topRightCell = videoEntries.reduce((acc, [cam]) => {
                     const pos = cameraPositions[cam] || { x: 0, y: 0 };
                     if (!acc) return { cam, pos };
@@ -6502,7 +6461,7 @@ class VideoClipProcessor {
                 const targetX = topRightCell ? topRightCell.pos.x * cellWidth : gridCanvasWidth - cellWidth;
                 const targetY = topRightCell ? topRightCell.pos.y * cellHeight : 0;
                 const margin = 16; // base inset
-                // 额外左移：按文本宽度的一半（n/2），让长时间戳整体更向内
+                // Shift left by half the text width so long timestamps sit further inside
                 const extraLeft = textWidth / 2;
                 const tsX = targetX + cellWidth - boxWidth - margin - extraLeft;
                 const tsY = targetY + margin;
@@ -6585,7 +6544,7 @@ class VideoClipProcessor {
                         
                         if (processedFrames % 30 === 0) {
                             const progress = Math.min(100, Math.round((processedFrames / totalFrames) * 100));
-                            progressCallback?.(`处理四宫格: ${progress}%`);
+                            progressCallback?.(`Processing grid: ${progress}%`);
                         }
                         
                         masterVideo.requestVideoFrameCallback(onFrame);
@@ -6649,7 +6608,7 @@ class VideoClipProcessor {
                         
                         if (processedFrames % 30 === 0) {
                             const progress = Math.min(100, Math.round((processedFrames / totalFrames) * 100));
-                            progressCallback?.(`处理四宫格: ${progress}%`);
+                            progressCallback?.(`Processing grid: ${progress}%`);
                         }
                         setTimeout(tick, frameInterval);
                     };
@@ -6741,17 +6700,17 @@ class VideoClipProcessor {
                     const fixed = await this.fixWebmWithFFmpeg(fileHandle, progressCallback);
                     if (!fixed) {
                         console.warn('[Grid Video Export] FFmpeg metadata fix failed, video may have inaccurate duration');
-                        progressCallback?.('视频已保存（元数据修复跳过）');
+                        progressCallback?.('Video saved (metadata repair skipped)');
                     }
                 } catch (e) {
                     console.warn('[Grid Video Export] FFmpeg metadata fix error:', e);
-                    progressCallback?.('视频已保存（元数据修复跳过）');
+                    progressCallback?.('Video saved (metadata repair skipped)');
                 }
             }
             return result;
         }
 
-        progressCallback?.('修复视频元数据...');
+        progressCallback?.('Repairing video metadata...');
         const fixedBlob = await webmDurationFixer.fixDuration(result, calculatedDuration);
         
         return fixedBlob;
@@ -6768,7 +6727,7 @@ class VideoClipProcessor {
         const margin = 20 * scale;
         
         // Measure text width
-        this.ctx.font = `bold ${fontSize}px "Noto Sans SC", Arial`;
+        this.ctx.font = `bold ${fontSize}px Arial, sans-serif`;
         const textWidth = this.ctx.measureText(timeString).width;
         const boxWidth = textWidth + padding * 2;
         const x = this.canvas.width - boxWidth - margin;
@@ -6789,9 +6748,9 @@ class VideoClipProcessor {
         const allMetadata = [];
         
         for (let i = 0; i < clipSegments.length; i++) {
-            if (this.isCancelled) throw new Error('导出已取消');
+            if (this.isCancelled) throw new Error('Export cancelled');
             if (progressCallback) {
-                progressCallback(`读取视频数据 ${i + 1}/${clipSegments.length}...`);
+                progressCallback(`Reading video data ${i + 1}/${clipSegments.length}...`);
             }
             const clipSegment = clipSegments[i];
             const videoFile = clipSegment.segment.files[camera];
@@ -6869,7 +6828,7 @@ class VideoClipProcessor {
     /**
      * Draw metadata overlay on canvas
      */
-    drawMetadata(metadataData, lang = 'zh') {
+    drawMetadata(metadataData, lang = 'en') {
         if (!metadataData) return;
         
         const d = metadataData;
@@ -6941,7 +6900,7 @@ class VideoClipProcessor {
         
         // Draw items (Using SCALED COORDINATES)
         this.ctx.save();
-        this.ctx.font = `bold ${fontSize}px "Noto Sans SC", Arial, sans-serif`;
+        this.ctx.font = `bold ${fontSize}px Arial, sans-serif`;
         this.ctx.textBaseline = 'middle';
         
         // Speed (Scaled at 125)
@@ -7031,12 +6990,12 @@ class VideoClipProcessor {
             }
             ctx.fillStyle = color;
             
-            // 绘制图标，居中对齐 - 使用较大尺寸
+            // Draw the icon, centred, at a larger size
             const iconSize = size * 1.5;
             const iconX = x + (size - iconSize) / 2;
             const iconY = y - iconSize / 2;
             
-            // SVG viewBox是0 0 1024 1024，路径实际范围约 x:140-880, y:162-861
+            // SVG viewBox is 0 0 1024 1024; the path actually spans about x:140-880, y:162-861
             const svgSize = 1024;
             const pathWidth = 880 - 140;
             const pathHeight = 861 - 162;
@@ -7045,7 +7004,7 @@ class VideoClipProcessor {
             
             const scale = iconSize / svgSize;
             
-            // 将路径中心移到图标中心
+            // Move the path centre onto the icon centre
             ctx.translate(iconX + iconSize / 2, iconY + iconSize / 2);
             ctx.scale(scale, scale);
             ctx.translate(-pathCenterX, -pathCenterY);
@@ -7171,7 +7130,7 @@ class TeslaCamViewer {
         this.allFiles = [];
         this.eventGroups = [];
         this.currentEvent = null;
-        this.currentLanguage = 'zh';
+        this.currentLanguage = 'en';
         this.currentMapCoordinates = null;
         this.flatpickrInstance = null;
         this.videoClipProcessor = new VideoClipProcessor();
@@ -7192,7 +7151,6 @@ class TeslaCamViewer {
             langToggleBtn: document.getElementById('langToggleBtn'),
             mapModal: document.getElementById('mapModal'),
             mapModalTitle: document.getElementById('mapModalTitle'),
-            gaodeMapBtn: document.getElementById('gaodeMapBtn'),
             googleMapBtn: document.getElementById('googleMapBtn'),
             closeModalBtn: document.getElementById('closeModalBtn'),
             revealFileBtn: document.getElementById('revealFileBtn'),
@@ -7248,29 +7206,29 @@ class TeslaCamViewer {
         this.loadLastTeslaCamPath();
     }
 
-    // 清理旧数据，释放内存
+    // Drop stale data and free memory
     cleanupOldData() {
-        // 清理视频播放器
+        // Tear down the video players
         if (this.multiCameraPlayer) {
             this.multiCameraPlayer.cleanup();
         }
         
-        // 清理缩略图的 blob URL
+        // Release thumbnail blob URLs
         if (this.eventGroups) {
             for (const event of this.eventGroups) {
                 if (event.thumbFile && !this.isTauri) {
-                    // Web 环境下的缩略图可能有 blob URL 需要清理
-                    // 但实际上缩略图 URL 在 img.onload 时已经 revoke 了
+                    // Thumbnails in the web build may hold blob URLs that need releasing
+                    // though in practice the thumbnail URL is already revoked in img.onload
                 }
             }
         }
         
-        // 清空旧数据引用
+        // Clear references to the old data
         this.allFiles = [];
         this.eventGroups = [];
         this.currentEvent = null;
         
-        // 强制垃圾回收提示（浏览器可能会忽略）
+        // Hint at garbage collection (browsers are free to ignore it)
         if (window.gc) {
             window.gc();
         }
@@ -7285,13 +7243,13 @@ class TeslaCamViewer {
             e.preventDefault();
             e.stopPropagation();
             
-            // Tauri 环境下使用 dialog API 选择目录
+            // Under Tauri, pick the directory with the dialog API
             if (this.isTauri) {
                 await this.selectTauriDirectory();
                 return;
             }
             
-            // 优先使用 File System Access API（支持持久化目录句柄）
+            // Prefer the File System Access API (it supports persistent directory handles)
             if (supportsFileSystemAccess()) {
                 await this.selectDirectoryWithFSA();
                 return;
@@ -7380,7 +7338,7 @@ class TeslaCamViewer {
                 this.dom.headerRight.classList.toggle('active');
             });
             
-            // 点击外部关闭菜单
+            // Close the menu on an outside click
             document.addEventListener('click', () => {
                 if (this.dom.headerRight.classList.contains('active')) {
                     this.dom.headerRight.classList.remove('active');
@@ -7407,8 +7365,7 @@ class TeslaCamViewer {
                 this.hideMapModal();
             }
         });
-        this.dom.gaodeMapBtn.addEventListener('click', () => this.openMap('gaode'));
-        this.dom.googleMapBtn.addEventListener('click', () => this.openMap('google'));
+        this.dom.googleMapBtn.addEventListener('click', () => this.openMap());
         this.dom.revealFileBtn.addEventListener('click', () => this.revealCurrentFilePath());
         this.dom.downloadFileBtn.addEventListener('click', () => this.downloadCurrentFile());
         this.dom.exportMetadataBtn.addEventListener('click', () => this.exportMetadataToCSV());
@@ -7439,10 +7396,10 @@ class TeslaCamViewer {
     }
 
     /**
-     * 显示 toast 提示
-     * @param {string} message - 提示消息
-     * @param {string} type - 类型: 'success' | 'error' | 'info'
-     * @param {number} duration - 显示时长(ms)，默认3000
+     * Show a toast notification
+     * @param {string} message - the message to show
+     * @param {string} type - 'success' | 'error' | 'info'
+     * @param {number} duration - how long to show it, in ms (default 3000)
      */
     showToast(message, type = 'success', duration = 3000) {
         let container = document.querySelector('.toast-container');
@@ -7457,7 +7414,7 @@ class TeslaCamViewer {
         toast.textContent = message;
         container.appendChild(toast);
 
-        // 触发重排以启动动画
+        // Force a reflow so the animation starts
         toast.offsetHeight;
         toast.classList.add('show');
 
@@ -7478,7 +7435,7 @@ class TeslaCamViewer {
         const translations = i18n[lang];
         this.flatpickrInstance = flatpickr(this.dom.dateFilter, {
             dateFormat: "Y-m-d",
-            locale: this.currentLanguage === 'zh' ? 'zh' : 'default',
+            locale: this.currentLanguage === 'fr' ? 'fr' : 'default',
             placeholder: translations.selectDate,
             disableMobile: true, // Force flatpickr on mobile instead of native picker
             onChange: (selectedDates, dateStr, instance) => {
@@ -7680,7 +7637,7 @@ class TeslaCamViewer {
 
         try {
             const allFiles = [];
-            // 记录第一个有效的目录路径用于保存
+            // Remember the first valid directory path for saving
             let validDirPath = null;
             
             for (const path of paths) {
@@ -7689,7 +7646,7 @@ class TeslaCamViewer {
                 console.log('[Tauri Drop] Found files:', files.length);
                 allFiles.push(...files);
                 
-                // 记录第一个路径作为保存的目录
+                // Remember the first path as the save directory
                 if (!validDirPath && files.length > 0) {
                     validDirPath = path;
                 }
@@ -7702,7 +7659,7 @@ class TeslaCamViewer {
                     console.log('[Tauri Drop] Sample file:', f.name, 'webkitRelativePath:', f.webkitRelativePath);
                 });
                 
-                // 检查是否是有效的 TeslaCam 目录
+                // Check this really is a TeslaCam directory
                 const hasTeslaCamSubfolders = allFiles.some(file => 
                     file.webkitRelativePath.includes('RecentClips/') ||
                     file.webkitRelativePath.includes('SavedClips/') ||
@@ -7710,7 +7667,7 @@ class TeslaCamViewer {
                 );
                 
                 if (hasTeslaCamSubfolders && validDirPath) {
-                    // 保存路径到配置文件，供下次启动使用
+                    // Persist the path so the next launch can reuse it
                     await this.saveTauriConfig({ lastTeslaCamPath: validDirPath });
                     console.log('[Tauri Drop] Saved path to config:', validDirPath);
                 }
@@ -7768,7 +7725,7 @@ class TeslaCamViewer {
     }
 
     async handleFolderSelection(files) {
-        // 清理旧数据，释放内存
+        // Drop stale data and free memory
         this.cleanupOldData();
         
         this.allFiles = Array.from(files);
@@ -7825,9 +7782,7 @@ class TeslaCamViewer {
         
         if (validFiles.length === 0) {
             const lang = this.currentLanguage;
-            alert(lang === 'zh' 
-                ? '未找到有效的TeslaCam视频文件。请选择文件名格式为 "2024-01-15_12-30-00-front.mp4" 的视频文件。'
-                : 'No valid TeslaCam video files found. Please select video files with filename format like "2024-01-15_12-30-00-front.mp4".');
+            alert('No valid TeslaCam video files found. Please select video files with filename format like "2024-01-15_12-30-00-front.mp4".');
             this.dom.fileInputIOS.value = '';
             this.allFiles = [];
             this.showInitialHelpMessage();
@@ -8431,18 +8386,18 @@ class TeslaCamViewer {
     }
 
     toggleLanguage() {
-        const newLang = this.currentLanguage === 'zh' ? 'en' : 'zh';
+        const newLang = this.currentLanguage === 'fr' ? 'en' : 'fr';
         this.setLanguage(newLang);
     }
 
     setLanguage(lang) {
         this.currentLanguage = lang;
         localStorage.setItem('language', lang);
-        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        document.documentElement.lang = lang === 'fr' ? 'fr' : 'en';
         // Guard clause for flatpickr instance and its methods
         if (this.flatpickrInstance && typeof this.flatpickrInstance.set === 'function') {
-            const isChinese = lang === 'zh';
-            this.flatpickrInstance.set('locale', isChinese ? 'zh' : 'default');
+            const isFrench = lang === 'fr';
+            this.flatpickrInstance.set('locale', isFrench ? 'fr' : 'default');
             this.flatpickrInstance.redraw();
         }
         // Guard clause for dateFilter element
@@ -8454,22 +8409,23 @@ class TeslaCamViewer {
 
     loadLanguage() {
         const savedLang = localStorage.getItem('language');
-        let lang = navigator.language.startsWith('zh') ? 'zh' : 'en';
-        if (savedLang) {
+        let lang = navigator.language.startsWith('fr') ? 'fr' : 'en';
+        // Guard against a stale/unknown value left in localStorage
+        if (savedLang && i18n[savedLang]) {
             lang = savedLang;
         }
         this.setLanguage(lang);
     }
 
     /**
-     * 获取 Tauri 配置文件路径
+     * Resolve the path of the Tauri config file
      */
     async getTauriConfigPath() {
         const tauri = getTauri();
         if (!tauri || !tauri.path) return null;
         
         try {
-            // 使用应用数据目录存储配置
+            // Store the config in the app data directory
             const appDataDir = await tauri.path.appDataDir();
             return `${appDataDir}config.json`;
         } catch (e) {
@@ -8479,7 +8435,7 @@ class TeslaCamViewer {
     }
 
     /**
-     * 保存 Tauri 配置到本地文件
+     * Write the Tauri config to disk
      */
     async saveTauriConfig(config) {
         const tauri = getTauri();
@@ -8489,12 +8445,12 @@ class TeslaCamViewer {
             const configPath = await this.getTauriConfigPath();
             if (!configPath) return;
             
-            // 确保目录存在
+            // Make sure the directory exists
             const appDataDir = await tauri.path.appDataDir();
             try {
                 await tauri.fs.mkdir(appDataDir, { recursive: true });
             } catch (e) {
-                // 目录可能已存在
+                // The directory may already exist
             }
             
             await tauri.fs.writeTextFile(configPath, JSON.stringify(config, null, 2));
@@ -8505,7 +8461,7 @@ class TeslaCamViewer {
     }
 
     /**
-     * 读取 Tauri 配置文件
+     * Read the Tauri config file
      */
     async loadTauriConfig() {
         const tauri = getTauri();
@@ -8518,19 +8474,19 @@ class TeslaCamViewer {
             const content = await tauri.fs.readTextFile(configPath);
             return JSON.parse(content);
         } catch (e) {
-            // 文件不存在或解析失败
+            // Missing file, or it failed to parse
             console.log('[loadTauriConfig] No config file found or parse error:', e.message);
             return null;
         }
     }
 
     /**
-     * 加载上次选择的 TeslaCam 目录
+     * Reload the TeslaCam directory chosen last time
      */
     async loadLastTeslaCamPath() {
-        // Tauri 环境：使用本地配置文件存储路径
+        // Tauri: the path lives in the local config file
         if (this.isTauri) {
-            // 等待一小段时间确保 Tauri API 完全初始化
+            // Give the Tauri API a moment to finish initialising
             await new Promise(resolve => setTimeout(resolve, 100));
             
             const tauri = getTauri();
@@ -8539,7 +8495,7 @@ class TeslaCamViewer {
                 return;
             }
             
-            // 从配置文件读取上次的路径
+            // Read the previous path from the config file
             const config = await this.loadTauriConfig();
             const lastPath = config?.lastTeslaCamPath;
             
@@ -8551,14 +8507,14 @@ class TeslaCamViewer {
             console.log('[loadLastTeslaCamPath] Found saved path:', lastPath);
             
             try {
-                // 检查目录是否仍然存在
+                // Check the directory is still there
                 const metadata = await tauri.fs.stat(lastPath);
                 if (!metadata.isDirectory) {
                     console.log('[loadLastTeslaCamPath] Path is not a directory');
                     return;
                 }
                 
-                // 自动加载该目录
+                // Load that directory automatically
                 console.log('[loadLastTeslaCamPath] Auto-loading directory...');
                 await this.loadTauriDirectory(lastPath);
             } catch (e) {
@@ -8567,7 +8523,7 @@ class TeslaCamViewer {
             return;
         }
         
-        // Web 环境：使用 File System Access API 和 IndexedDB 存储目录句柄
+        // Web: the directory handle is kept via the File System Access API and IndexedDB
         if (supportsFileSystemAccess()) {
             try {
                 const handle = await getDirectoryHandle();
@@ -8578,7 +8534,7 @@ class TeslaCamViewer {
                 
                 console.log('[loadLastTeslaCamPath] Found saved directory handle:', handle.name);
                 
-                // 请求权限（用户可能需要重新授权）
+                // Request permission (the user may need to re-authorise)
                 const permission = await handle.requestPermission({ mode: 'read' });
                 if (permission !== 'granted') {
                     console.log('[loadLastTeslaCamPath] Permission denied, clearing saved handle');
@@ -8586,7 +8542,7 @@ class TeslaCamViewer {
                     return;
                 }
                 
-                // 加载目录
+                // Load the directory
                 console.log('[loadLastTeslaCamPath] Auto-loading directory from handle...');
                 await this.loadDirectoryFromHandle(handle);
             } catch (e) {
@@ -8599,7 +8555,7 @@ class TeslaCamViewer {
     }
 
     /**
-     * 使用 File System Access API 选择目录（Web 版本）
+     * Pick a directory with the File System Access API (web build)
      */
     async selectDirectoryWithFSA() {
         try {
@@ -8611,10 +8567,10 @@ class TeslaCamViewer {
             
             console.log('[selectDirectoryWithFSA] Selected directory:', handle.name);
             
-            // 保存目录句柄到 IndexedDB
+            // Persist the directory handle in IndexedDB
             await saveDirectoryHandle(handle);
             
-            // 加载目录
+            // Load the directory
             await this.loadDirectoryFromHandle(handle);
         } catch (e) {
             if (e.name === 'AbortError') {
@@ -8622,19 +8578,19 @@ class TeslaCamViewer {
                 return;
             }
             console.error('[selectDirectoryWithFSA] Error:', e);
-            this.showToast('选择目录失败: ' + e.message, 'error');
+            this.showToast('Failed to open directory: ' + e.message, 'error');
         }
     }
 
     /**
-     * 从目录句柄加载文件（Web 版本）
+     * Load files from a directory handle (web build)
      */
     async loadDirectoryFromHandle(handle) {
-        // 显示加载状态
+        // Show the loading state
         const loadingDiv = document.createElement('div');
         loadingDiv.id = 'fsa-loading';
         loadingDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:20px 40px;border-radius:8px;z-index:9999;';
-        loadingDiv.textContent = this.currentLanguage === 'zh' ? '正在加载目录...' : 'Loading directory...';
+        loadingDiv.textContent = 'Loading directory...';
         document.body.appendChild(loadingDiv);
         
         try {
@@ -8649,7 +8605,7 @@ class TeslaCamViewer {
                 return;
             }
             
-            // 检查是否有 TeslaCam 子文件夹
+            // Check for the TeslaCam subfolders
             const hasTeslaCamSubfolders = files.some(file => 
                 file.webkitRelativePath.includes('RecentClips/') ||
                 file.webkitRelativePath.includes('SavedClips/') ||
@@ -8662,7 +8618,7 @@ class TeslaCamViewer {
                 return;
             }
             
-            // 清理旧数据
+            // Drop the stale data
             this.cleanupOldData();
             
             this.allFiles = files;
@@ -8676,18 +8632,18 @@ class TeslaCamViewer {
     }
 
     /**
-     * 递归收集目录中的所有文件
+     * Recursively collect every file in a directory
      */
     async collectFilesFromHandle(dirHandle, basePath, files) {
         for await (const entry of dirHandle.values()) {
             const entryPath = `${basePath}/${entry.name}`;
             
             if (entry.kind === 'file') {
-                // 收集视频文件、缩略图和事件JSON
+                // Collect videos, thumbnails and event JSON
                 if (entry.name.endsWith('.mp4') || entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name === 'event.json') {
                     try {
                         const file = await entry.getFile();
-                        // 添加 webkitRelativePath 属性
+                        // Attach a webkitRelativePath property
                         Object.defineProperty(file, 'webkitRelativePath', {
                             value: entryPath,
                             writable: false
@@ -8698,25 +8654,25 @@ class TeslaCamViewer {
                     }
                 }
             } else if (entry.kind === 'directory') {
-                // 递归处理子目录
+                // Recurse into subdirectories
                 await this.collectFilesFromHandle(entry, entryPath, files);
             }
         }
     }
 
     /**
-     * 使用 Tauri dialog 选择目录
+     * Pick a directory with the Tauri dialog
      */
     async selectTauriDirectory() {
         const tauri = getTauri();
         if (!tauri) return;
         
         try {
-            // 获取上次选择的路径作为默认目录
+            // Use the previous path as the default directory
             const config = await this.loadTauriConfig();
             const lastPath = config?.lastTeslaCamPath;
             
-            // 使用 Tauri dialog API 选择目录
+            // Pick the directory with the Tauri dialog API
             let dialog = tauri.dialog;
             if (!dialog && tauri.api) {
                 dialog = tauri.api.dialog;
@@ -8746,12 +8702,12 @@ class TeslaCamViewer {
             await this.loadTauriDirectory(path);
         } catch (e) {
             console.error('[selectTauriDirectory] Error:', e);
-            this.showToast('选择目录失败: ' + e.message, 'error');
+            this.showToast('Failed to open directory: ' + e.message, 'error');
         }
     }
 
     /**
-     * 加载 Tauri 目录
+     * Load a Tauri directory
      */
     async loadTauriDirectory(path) {
         // Show loading state
@@ -8780,7 +8736,7 @@ class TeslaCamViewer {
                     console.log('[loadTauriDirectory] Sample file:', f.name, 'webkitRelativePath:', f.webkitRelativePath);
                 });
                 
-                // 检查是否是有效的 TeslaCam 目录
+                // Check this really is a TeslaCam directory
                 const hasTeslaCamSubfolders = files.some(file => 
                     file.webkitRelativePath.includes('RecentClips/') ||
                     file.webkitRelativePath.includes('SavedClips/') ||
@@ -8788,7 +8744,7 @@ class TeslaCamViewer {
                 );
                 
                 if (hasTeslaCamSubfolders) {
-                    // 保存路径到配置文件
+                    // Persist the path to the config file
                     await this.saveTauriConfig({ lastTeslaCamPath: path });
                     console.log('[loadTauriDirectory] Saved path to config file');
                     
@@ -8816,16 +8772,15 @@ class TeslaCamViewer {
         // Update language toggle button text
         const langIconEl = this.dom.langToggleBtn.querySelector('.btn-icon');
         if (langIconEl) {
-            langIconEl.textContent = lang === 'zh' ? 'En' : '中';
+            langIconEl.textContent = lang === 'fr' ? 'EN' : 'FR';
         } else {
-            this.dom.langToggleBtn.textContent = lang === 'zh' ? 'En' : '中';
+            this.dom.langToggleBtn.textContent = lang === 'fr' ? 'EN' : 'FR';
         }
         
         this.dom.langToggleBtn.title = translations.toggleLanguage;
         this.dom.themeToggleBtn.title = translations.toggleTheme;
         this.dom.toggleSidebarBtn.title = translations.toggleSidebar;
         this.dom.mapModalTitle.textContent = translations.mapModalTitle;
-        this.dom.gaodeMapBtn.textContent = translations.gaodeMap;
         this.dom.googleMapBtn.textContent = translations.googleMap;
         this.dom.revealFileBtn.title = translations.revealFile;
         this.dom.downloadFileBtn.title = translations.downloadFile;
@@ -9126,11 +9081,11 @@ class TeslaCamViewer {
                     });
                 }
 
-                this.showToast('保存成功!', 'success');
+                this.showToast('Saved', 'success');
             } catch (e) {
                 console.error('Tauri download failed:', e);
                 const errorMsg = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
-                alert('保存失败: ' + errorMsg);
+                alert('Save failed: ' + errorMsg);
             }
             return;
         }
@@ -9211,7 +9166,7 @@ class TeslaCamViewer {
             const startTime = new Date(startDate.getTime() + this.videoControls.clipStartTime * 1000);
             const endTime = new Date(startDate.getTime() + this.videoControls.clipEndTime * 1000);
             
-            const locale = this.currentLanguage === 'zh' ? 'zh-CN' : 'en-CA';
+            const locale = 'en-CA';
             this.dom.clipStartTime.textContent = startTime.toLocaleString(locale, {
                 year: 'numeric',
                 month: '2-digit',
@@ -9249,12 +9204,12 @@ class TeslaCamViewer {
                     this.dom.useLocalFFmpeg.checked = true;
                     this.dom.useLocalFFmpeg.disabled = false;
                     document.getElementById('useLocalFFmpegLabel').textContent = 
-                        this.currentLanguage === 'zh' ? '使用 FFmpeg 极速导出' : 'Use FFmpeg Fast Export';
+                        'Use FFmpeg Fast Export';
                 } else {
                     this.dom.useLocalFFmpeg.checked = false;
                     this.dom.useLocalFFmpeg.disabled = true;
                     document.getElementById('useLocalFFmpegLabel').textContent = 
-                        this.currentLanguage === 'zh' ? 'FFmpeg 未安装' : 'FFmpeg Not Installed';
+                        'FFmpeg Not Installed';
                 }
             });
         } else if (this.dom.ffmpegOptionRow) {
@@ -9345,7 +9300,7 @@ class TeslaCamViewer {
                     await writable.close();
 
                     console.log('File saved via File System Access API');
-                    this.showToast('视频保存成功!', 'success');
+                    this.showToast('Video saved', 'success');
                 } catch (fsError) {
                     // User cancelled the save dialog or API failed
                     if (fsError.name === 'AbortError') {
@@ -9379,11 +9334,11 @@ class TeslaCamViewer {
                     console.log('Cleanup completed');
                 }, 1000);
                 
-                this.showToast(`视频已下载: ${filename}`, 'success');
+                this.showToast(`Video downloaded: ${filename}`, 'success');
             }
         } catch (downloadError) {
             console.error('Download error:', downloadError);
-            alert('下载失败: ' + downloadError.message);
+            alert('Download failed: ' + downloadError.message);
         }
     }
 
@@ -9482,7 +9437,7 @@ class TeslaCamViewer {
                         this.dom.clipProgressBar.classList.remove('indeterminate');
                         const percent = parseInt(percentMatch[1], 10);
                         this.dom.clipProgressBar.style.width = Math.min(95, percent) + '%';
-                    } else if (msg.includes('FFmpeg') || msg.includes('极速导出') || msg.includes('写入磁盘')) {
+                    } else if (msg.includes('FFmpeg') || msg.toLowerCase().includes('exporting') || msg.toLowerCase().includes('writing to disk')) {
                         // FFmpeg export - use indeterminate animation
                         this.dom.clipProgressBar.classList.add('indeterminate');
                     } else {
@@ -9551,16 +9506,16 @@ class TeslaCamViewer {
                                 await fs.copyFile(result.path, resolvedSavePath);
                                 // Remove temp file
                                 await fs.remove(result.path);
-                                this.showToast('保存成功!', 'success');
+                                this.showToast('Saved', 'success');
                             } else if (resolvedSavePath === result.path) {
-                                this.showToast('保存成功!', 'success');
+                                this.showToast('Saved', 'success');
                             } else {
                                 // User cancelled, keep the file in original location
-                                this.showToast(`视频已保存到: ${result.path}`, 'success');
+                                this.showToast(`Video saved to: ${result.path}`, 'success');
                             }
                         } catch (e) {
                             console.error('File move failed:', e);
-                            this.showToast(`视频已保存到: ${result.path}`, 'success');
+                            this.showToast(`Video saved to: ${result.path}`, 'success');
                         }
                     } else if (result.blob) {
                         // Canvas export - blob needs to be saved
@@ -9569,7 +9524,7 @@ class TeslaCamViewer {
                         
                         if (result.blob.size === 0) {
                             console.error('Invalid blob for camera:', result.camera);
-                            alert('导出失败：生成的视频文件为空');
+                            alert('Export failed: the generated video file is empty');
                             continue;
                         }
                         
@@ -9594,11 +9549,11 @@ class TeslaCamViewer {
                                 
                                 // Tauri v2 uses writeFile
                                 await fs.writeFile(resolvedSavePath, uint8Array);
-                                this.showToast('保存成功!', 'success');
+                                this.showToast('Saved', 'success');
                             }
                         } catch (e) {
                             console.error('Tauri save failed:', e);
-                            alert('保存失败: ' + (e.message || e));
+                            alert('Save failed: ' + (e.message || e));
                         }
                     }
                 }
@@ -9610,7 +9565,7 @@ class TeslaCamViewer {
                 }, 2000);
             } else {
                 // Browser download - Show buttons
-                this.dom.clipProgressText.textContent = '视频已生成，请点击下方按钮保存';
+                this.dom.clipProgressText.textContent = 'Video ready - use the button below to save it';
                 
                 // Disable clip info and options since video is already generated
                 this.dom.clipInfo.classList.add('disabled');
@@ -9626,7 +9581,7 @@ class TeslaCamViewer {
                         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
                         const filename = `TeslaCam_${result.camera}_${timestamp}.webm`;
                         const isGrid = result.camera === 'grid';
-                        const cameraName = isGrid ? '四宫格' : result.camera;
+                        const cameraName = isGrid ? 'Grid' : result.camera;
                         const sizeInMB = result.blob.size / (1024 * 1024);
                         const sizeText = sizeInMB >= 1 ? `${sizeInMB.toFixed(1)} MB` : `${(result.blob.size / 1024).toFixed(0)} KB`;
                         
@@ -9637,7 +9592,7 @@ class TeslaCamViewer {
                              btn.disabled = true;
                              btn.innerHTML = `
                                 <span class="btn-icon">✅</span>
-                                <span class="btn-text">${cameraName} 已保存</span>
+                                <span class="btn-text">${cameraName} saved</span>
                             `;
                              if (result.blob && result.blob.size > 0) {
                                  btn.innerHTML += `<span class="btn-size">${sizeText}</span>`;
@@ -9646,7 +9601,7 @@ class TeslaCamViewer {
                         } else {
                             btn.innerHTML = `
                                 <span class="btn-icon">💾</span>
-                                <span class="btn-text">保存 ${cameraName} 视频</span>
+                                <span class="btn-text">Save ${cameraName} video</span>
                                 <span class="btn-size">${sizeText}</span>
                             `;
                             btn.onclick = async () => {
@@ -9656,7 +9611,7 @@ class TeslaCamViewer {
                                 btn.disabled = true;
                                 btn.innerHTML = `
                                     <span class="btn-icon">✅</span>
-                                    <span class="btn-text">${cameraName} 已保存</span>
+                                    <span class="btn-text">${cameraName} saved</span>
                                     <span class="btn-size">${sizeText}</span>
                                 `;
                             };
@@ -9672,7 +9627,7 @@ class TeslaCamViewer {
             
         } catch (error) {
             console.error('Clip export error:', error);
-            const errorMsg = error?.message || error?.toString?.() || JSON.stringify(error) || '未知错误';
+            const errorMsg = error?.message || error?.toString?.() || JSON.stringify(error) || 'Unknown error';
             alert(translations.exportFailed + errorMsg);
             this.dom.clipProgress.style.display = 'none';
             this.dom.startClipBtn.disabled = false;
@@ -9694,20 +9649,10 @@ class TeslaCamViewer {
         }, 300);
     }
 
-    async openMap(type) {
+    async openMap() {
         if (!this.currentMapCoordinates) return;
         const { lat, lon } = this.currentMapCoordinates;
-        let url;
-        if (type === 'gaode') {
-            // Convert WGS-84 (GPS) to GCJ-02 (Gaode/AMap) for accuracy
-            const gcj02 = wgs84togcj02(parseFloat(lon), parseFloat(lat));
-            const gcj_lon = gcj02[0];
-            const gcj_lat = gcj02[1];
-            // Gaode URI API uses lon,lat order and GCJ-02 coordinates
-            url = `https://uri.amap.com/marker?position=${gcj_lon},${gcj_lat}&name=事件位置`;
-        } else { // google
-            url = `https://www.google.com/maps?q=${lat},${lon}`;
-        }
+        const url = `https://www.google.com/maps?q=${lat},${lon}`;
         
         // In Tauri desktop, use shell plugin to open in default browser
         if (this.isTauri && window.__TAURI__) {
@@ -9762,36 +9707,8 @@ class TeslaCamViewer {
     destroy() { if (this.multiCameraPlayer) this.multiCameraPlayer.cleanup(); }
 }
 
-// Preload custom font for Canvas rendering (desktop only, non-blocking)
-function preloadFonts() {
-    // Only load font in Tauri desktop environment
-    if (!window.__TAURI__) return;
-    
-    // Dynamically add @font-face for desktop
-    const style = document.createElement('style');
-    style.textContent = `
-        @font-face {
-            font-family: 'Noto Sans SC';
-            src: url('./assets/fonts/NotoSansSC-Light.ttf') format('truetype');
-            font-weight: 300;
-            font-style: normal;
-            font-display: swap;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(() => {
-            console.log('Fonts ready for Canvas rendering');
-        }).catch(() => {
-            console.warn('Font loading check failed, using fallback');
-        });
-    }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        preloadFonts();
         window.viewer = new TeslaCamViewer();
         window.addEventListener('beforeunload', () => { if (window.viewer) window.viewer.destroy(); });
         console.log('TDashcam Studio Initialized');
