@@ -212,10 +212,20 @@ the dashcam service issues its own.
 
 1. Open <https://dashcam.tesla.com> and sign in to your Tesla account.
 2. Open DevTools (F12) and select the **Network** tab.
-3. Load a clip in the page so it makes an API call.
+3. **Drag one encrypted clip onto the page.** Nothing calls the API until you
+   do, so an empty Network tab at this point is expected rather than a problem.
+   Any `.mp4` from `EncryptedClips/` will do.
 4. Click any request to `/api/1/`, open **Headers**, and find
    `Authorization: Bearer eyJ...`.
 5. Copy everything after `Bearer ` into `TESLA_ACCESS_TOKEN`.
+
+If the page holds the token in storage rather than only in memory, the console
+snippet in `doc/find-tesla-token.js` will find it: paste it into the DevTools
+console on dashcam.tesla.com and it lists every JWT it can see with its `aud`
+claim and expiry, **without printing the tokens themselves**. Pick the one whose
+audience mentions the dashcam service and copy it with `copy(__tokens[0].token)`.
+An empty result means the token only exists in memory, and the Network tab is
+the only route.
 
 Treat it like a password. **It expires after a few hours**, so this is a
 per-session affair rather than a set-and-forget one.
