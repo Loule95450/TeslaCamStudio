@@ -236,7 +236,25 @@ the token, so a fresh one can be handed over without editing this file or
 restarting anything. It goes straight to the container, is kept in `/config`,
 and is never stored in the browser or shown back.
 
-**There is no longer-lived option.** The `dashcam` client does not request the
+#### One sign-in, not one every eight hours
+
+The token expires, but **the keys it buys do not**: a key belongs to the clip,
+not to the session. So when a token arrives the container immediately fetches
+the key for every encrypted clip on the drive, twenty at a time, and keeps them
+in `/config/tesla-keys.json`.
+
+After that pass those clips play with no token at all, and with no network: the
+container was tested with the token deleted and Tesla unreachable, and the
+footage still decrypted byte for byte. A new token is only needed for clips
+recorded *since* the last pass, and pasting one starts the pass again.
+
+This is why `/config` should be on a real volume. Without it the keys are lost
+on every restart and you are back to signing in constantly.
+
+`POST /decrypt/prefetch` runs the pass on demand, and `/decrypt/status` reports
+`storedKeys` along with the progress.
+
+**There is no longer-lived token option.** The `dashcam` client does not request the
 `offline_access` scope, so Tesla issues no refresh token for it: the site's
 storage holds `ROCP_token` and `ROCP_idToken` but no `ROCP_refreshToken`.
 Decryption therefore lasts as long as one access token, a few hours, and then

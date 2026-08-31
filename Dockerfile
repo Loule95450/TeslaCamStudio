@@ -13,7 +13,7 @@ COPY src /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker/10-teslacam-auth.sh /docker-entrypoint.d/10-teslacam-auth.sh
 COPY docker/20-teslacam-decrypt.sh /docker-entrypoint.d/20-teslacam-decrypt.sh
-COPY docker/tesla-crypto.js docker/tesla-auth.js docker/decrypt-server.js /opt/teslacam/
+COPY docker/tesla-crypto.js docker/tesla-auth.js docker/key-store.js docker/decrypt-server.js /opt/teslacam/
 
 # The include must exist even when the hook has not run yet (e.g. `nginx -t`).
 RUN chmod +x /docker-entrypoint.d/10-teslacam-auth.sh /docker-entrypoint.d/20-teslacam-decrypt.sh \

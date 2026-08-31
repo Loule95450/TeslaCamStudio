@@ -23,6 +23,7 @@ const path = require('path');
 const crypto = require('crypto');
 const C = require('./tesla-crypto.js');
 const { TeslaAuth, inspectToken } = require('./tesla-auth.js');
+const { KeyStore } = require('./key-store.js');
 
 const PORT = Number(process.env.DECRYPT_PORT || 8189);
 const ROOT = process.env.TESLACAM_ROOT || '/teslacam';
@@ -42,13 +43,11 @@ const auth = new TeslaAuth({
     log,
 });
 
-/** uuid -> 16-byte AES key. Keys are per file and do not change. */
-const keyCache = new Map();
+const keyStore = new KeyStore(
+    process.env.TESLA_KEY_STORE || '/config/tesla-keys.json', log);
 
-function cacheKey(id, key) {
-    if (keyCache.size >= KEY_CACHE_MAX) keyCache.delete(keyCache.keys().next().value);
-    keyCache.set(id, key);
-}
+// Tesla's own page batches 20 clips per call.
+const BATCH_SIZE = Number(process.env.TESLA_BATCH_SIZE || 20);
 
 /** Resolve a request path inside ROOT, refusing anything that escapes it. */
 function safePath(rel) {
@@ -66,67 +65,60 @@ async function readHeader(fd) {
     return buf;
 }
 
-/**
- * The API's item id is chosen by the client: Tesla's own page uses its internal
- * video id. There is no identifier inside the file to reuse, so the path is
- * both stable and unique here.
- */
-function itemId(relativePath) {
-    return crypto.createHash('sha1').update(relativePath).digest('hex');
-}
-
 /** Ask Tesla for the key of one file. Only identifiers leave the machine. */
-async function fetchKey(meta, id) {
-    if (keyCache.has(id)) return keyCache.get(id);
-
-    const request = async () => {
+async function requestKeys(items) {
+    const attempt = async () => {
         const token = await auth.getAccessToken();
         return fetch(DECRYPT_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-                items: [{
-                    id,
-                    vin: meta.vin,
-                    key_id: meta.key_id,
-                    timestamp: meta.timestamp,
-                    wrapped_key: meta.wrapped_key,
-                    public_key: meta.public_key,
-                }],
-            }),
+            body: JSON.stringify({ items }),
         });
     };
 
-    let response = await request();
+    let response = await attempt();
     if (response.status === 401) {
-        auth.invalidate();               // token may have expired mid-flight
-        response = await request();
+        auth.invalidate();
+        response = await attempt();
         if (response.status === 401) {
-            // Twice in a row is not an expiry. Report what the token actually
-            // claims, since the usual cause is an audience Tesla will not take.
             const claims = inspectToken(await auth.getAccessToken().catch(() => ''));
             log.error(`[auth] Tesla rejected the token twice. Claims: ${JSON.stringify({
-                kind: claims.kind, aud: claims.aud, iss: claims.iss, expired: claims.expired })}`);
-            log.error('[auth] dashcam.tesla.com issues its own token; an owner-api token is not accepted.');
-            log.error('[auth] Sign in at dashcam.tesla.com, copy the Bearer token from DevTools,');
-            log.error('[auth] and set it as TESLA_ACCESS_TOKEN.');
+                kind: claims.kind, aud: claims.aud, expired: claims.expired })}`);
+            log.error("[auth] the token must come from dashcam.tesla.com (localStorage key ROCP_token).");
         }
     }
     if (!response.ok) {
         let detail = '';
-        try { detail = (await response.text()).slice(0, 200).replace(/\s+/g, ' '); } catch { /* body already gone */ }
+        try { detail = (await response.text()).slice(0, 200).replace(/\s+/g, ' '); } catch { /* gone */ }
         throw new Error(`Tesla key request failed: HTTP ${response.status}${detail ? ` - ${detail}` : ''}`);
     }
-
     const body = await response.json();
-    const result = (body.results || []).find((r) => r && r.id === id) || (body.results || [])[0];
+    return new Map((body.results || []).map((r) => [r.id, r]));
+}
+
+/** Key for one clip: from the store when we have it, from Tesla otherwise. */
+async function fetchKey(meta) {
+    const stored = keyStore.get(meta);
+    if (stored) return stored;
+
+    const id = KeyStore.identity(meta);
+    const results = await requestKeys([{
+        id,
+        vin: meta.vin,
+        key_id: meta.key_id,
+        timestamp: meta.timestamp,
+        wrapped_key: meta.wrapped_key,
+        public_key: meta.public_key,
+    }]);
+    const result = results.get(id) || [...results.values()][0];
     if (!result) throw new Error('Tesla returned no result for this clip');
     if (result.error) throw new Error(`Tesla refused the key: ${result.error}`);
     if (!result.key) throw new Error('Tesla returned no key for this clip');
 
     const key = Buffer.from(result.key, 'base64');
     if (key.length !== 16) throw new Error(`unexpected key length ${key.length}, expected 16`);
-    cacheKey(id, key);
+    keyStore.set(meta, key);
+    await keyStore.save();
     return key;
 }
 
@@ -164,10 +156,9 @@ async function serveClip(req, res, rel) {
     try {
         const stat = await fd.stat();
         const meta = C.parseHeader(await readHeader(fd), stat.size);
-        const id = itemId(rel);
         log.info(`[decrypt] ${path.basename(file)} size=${stat.size} plaintext=${meta.plaintextSize} ` +
                  `key_id=${meta.key_id} vin=${meta.vin.slice(0, 3)}***${meta.vin.slice(-4)}`);
-        const key = await fetchKey(meta, id);
+        const key = await fetchKey(meta);
         const size = meta.plaintextSize;
 
         const range = parseRange(req.headers.range, size);
@@ -253,6 +244,101 @@ async function inspectClip(res, rel) {
     }
 }
 
+/* ---------------------------------------------------------------------------
+   Prefetch
+
+   The token expires in eight hours; the keys it buys never do. So the moment a
+   valid token exists, fetch the key for every encrypted clip on the drive.
+   After that the whole drive plays with no token at all, and a new one is only
+   needed for footage recorded since.
+   --------------------------------------------------------------------------- */
+
+const prefetch = { running: false, total: 0, done: 0, fetched: 0, failed: 0, startedAt: null, finishedAt: null, error: null };
+
+async function* walkClips(dir) {
+    let entries;
+    try {
+        entries = await fsp.readdir(dir, { withFileTypes: true });
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) yield* walkClips(full);
+        else if (/\.(mp4|png)$/i.test(entry.name) || entry.name === 'event.json') yield full;
+    }
+}
+
+/** Read a clip's header, or null when it is not an encrypted clip. */
+async function readClipMeta(file) {
+    let fd;
+    try {
+        fd = await fsp.open(file, 'r');
+        const stat = await fd.stat();
+        if (stat.size < C.HEADER_SIZE) return null;
+        const header = Buffer.alloc(C.HEADER_SIZE);
+        await fd.read(header, 0, C.HEADER_SIZE, 0);
+        return C.parseHeader(header, stat.size);
+    } catch {
+        return null;                     // plain file, or unreadable: skip it
+    } finally {
+        if (fd) await fd.close().catch(() => {});
+    }
+}
+
+async function runPrefetch() {
+    if (prefetch.running) return;
+    Object.assign(prefetch, { running: true, total: 0, done: 0, fetched: 0, failed: 0,
+                              startedAt: new Date().toISOString(), finishedAt: null, error: null });
+    log.info('[prefetch] collecting keys for every encrypted clip on the drive');
+
+    try {
+        const pending = [];
+        for await (const file of walkClips(ROOT)) {
+            const meta = await readClipMeta(file);
+            if (!meta) continue;
+            prefetch.total++;
+            if (keyStore.has(meta)) continue;
+            pending.push(meta);
+        }
+        log.info(`[prefetch] ${prefetch.total} encrypted clips, ${pending.length} without a key yet`);
+
+        for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+            const batch = pending.slice(i, i + BATCH_SIZE);
+            const items = batch.map((meta) => ({
+                id: KeyStore.identity(meta),
+                vin: meta.vin,
+                key_id: meta.key_id,
+                timestamp: meta.timestamp,
+                wrapped_key: meta.wrapped_key,
+                public_key: meta.public_key,
+            }));
+            const results = await requestKeys(items);
+            for (const meta of batch) {
+                const r = results.get(KeyStore.identity(meta));
+                if (r && r.key && !r.error) {
+                    keyStore.set(meta, Buffer.from(r.key, 'base64'));
+                    prefetch.fetched++;
+                } else {
+                    prefetch.failed++;
+                }
+                prefetch.done++;
+            }
+            await keyStore.save();
+            log.info(`[prefetch] ${prefetch.done}/${pending.length} (${prefetch.fetched} keys, ${prefetch.failed} refused)`);
+        }
+        log.info(`[prefetch] finished: ${keyStore.size} keys stored. These clips no longer need a token.`);
+    } catch (e) {
+        prefetch.error = e.message;
+        log.error(`[prefetch] stopped: ${e.message}`);
+    } finally {
+        await keyStore.save();
+        prefetch.running = false;
+        prefetch.finishedAt = new Date().toISOString();
+    }
+}
+
 function sendJson(res, code, payload) {
     const body = JSON.stringify(payload);
     res.writeHead(code, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
@@ -267,7 +353,20 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
 
     if (url.pathname === '/decrypt/status') {
-        return sendJson(res, 200, auth.status());
+        const auth_status = auth.status();
+        // Stored keys never expire, so clips whose key we already hold play
+        // with no token at all. `configured` reflects that, not just the token.
+        return sendJson(res, 200, {
+            ...auth_status,
+            storedKeys: keyStore.size,
+            configured: auth_status.configured || keyStore.size > 0,
+            canFetchNewKeys: auth_status.configured,
+            prefetch,
+        });
+    }
+    if (url.pathname === '/decrypt/prefetch' && req.method === 'POST') {
+        runPrefetch();
+        return sendJson(res, 202, { started: true });
     }
     if (url.pathname === '/decrypt/token' && req.method === 'POST') {
         // Behind the site's basic auth, like everything else here. The token is
@@ -278,8 +377,10 @@ const server = http.createServer(async (req, res) => {
             try {
                 const { token } = JSON.parse(body || '{}');
                 const info = auth.setAccessToken(token);
-                keyCache.clear();
                 sendJson(res, 200, { ok: true, ...info });
+                // A fresh token is exactly the moment to collect every missing
+                // key, so the drive keeps playing once it expires.
+                runPrefetch();
             } catch (e) {
                 sendJson(res, 400, { ok: false, error: e.message });
             }
@@ -297,7 +398,12 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
     log.info(`[decrypt] listening on 127.0.0.1:${PORT}, footage root ${ROOT}`);
     if (!auth.configured) {
-        log.info('[decrypt] no Tesla credentials: encrypted clips stay unplayable');
+        if (keyStore.size) {
+            log.info(`[decrypt] no Tesla token, but ${keyStore.size} stored keys: those clips still play.`);
+            log.info('[decrypt] a token is only needed for clips recorded since.');
+        } else {
+            log.info('[decrypt] no Tesla token and no stored keys: encrypted clips stay unplayable');
+        }
         return;
     }
     // Say up front what was supplied and when it dies, so an expiry is not
@@ -311,6 +417,7 @@ server.listen(PORT, '127.0.0.1', () => {
             log.warn("[decrypt] the token must come from dashcam.tesla.com (localStorage key ROCP_token).");
         }
     }
+    if (auth.status().hasToken && !auth.status().expired) runPrefetch();
     if (!process.env.TESLA_REFRESH_TOKEN) {
         log.info('[decrypt] no refresh token: decryption stops when this one expires.');
         log.info('[decrypt] the dashcam client does not issue refresh tokens, so this is expected.');
