@@ -1,19 +1,22 @@
-# Lightweight nginx base image
-FROM nginx:alpine
+# TeslaCam Studio - a static player served by nginx, reading footage straight
+# out of a read-only bind mount at /teslacam.
+#
+#   docker run -p 8188:80 -v /mnt/usb/TeslaCam:/teslacam:ro \
+#     -e AUTH_USER=me -e AUTH_PASSWORD=secret \
+#     ghcr.io/loule95450/teslacamstudio:latest
+FROM nginx:1.27-alpine
 
-# Node.js is needed to run the injection script
-RUN apk add --no-cache nodejs
+# htpasswd, for the optional basic auth wired up by the entrypoint hook.
+RUN apk add --no-cache apache2-utils
 
-# Copy the app into the nginx web root
 COPY src /usr/share/nginx/html
-COPY scripts/inject-umami.js /usr/share/nginx/inject-umami.js
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/10-teslacam-auth.sh /docker-entrypoint.d/10-teslacam-auth.sh
 
-# Entrypoint hook
-RUN echo '#!/bin/sh' > /docker-entrypoint.d/99-inject-umami.sh && \
-    echo 'cd /usr/share/nginx && node inject-umami.js' >> /docker-entrypoint.d/99-inject-umami.sh && \
-    chmod +x /docker-entrypoint.d/99-inject-umami.sh
+# The include must exist even when the hook has not run yet (e.g. `nginx -t`).
+RUN chmod +x /docker-entrypoint.d/10-teslacam-auth.sh \
+ && touch /etc/nginx/teslacam-auth.inc \
+ && mkdir -p /teslacam \
+ && nginx -t
 
-# Expose port 80
 EXPOSE 80
-
-# The nginx base image starts the server by default

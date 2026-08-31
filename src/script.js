@@ -20,8 +20,6 @@ const i18n = {
         helpStep1IOS: "Copy TeslaCam videos to your iPad/iPhone",
         helpStep2IOS: "Select the video files (e.g., 2024-01-15_12-30-00-front.mp4)",
         helpNote: "Note: This tool does not upload your data. All processing happens locally.",
-        desktopTip: "💡 Tip: Due to browser limitations, it is recommended to use the desktop version for better performance.",
-        desktopDownload: "Download Desktop Version",
         mapModalTitle: "View on Map",
         googleMap: "Google Maps",
         revealFile: "Show Path",
@@ -117,7 +115,9 @@ const i18n = {
         ffmpegFastExporting: "FFmpeg Fast Exporting...",
         ffmpegMergingGrid: "FFmpeg Merging Grid Video...",
         generatingOverlays: "Generating metadata overlays...",
-        generatingOverlay: "Generating overlay"
+        generatingOverlay: "Generating overlay",
+        volumeEmpty: "No clips found in the mounted volume. Check that your TeslaCam folder - the one containing RecentClips, SavedClips and SentryClips - is mounted at /teslacam.",
+        volumeSource: "Reading from the mounted volume"
     },
     fr: {
         pageTitle: "TDashcam Studio",
@@ -140,8 +140,6 @@ const i18n = {
         helpStep1IOS: "Copiez les vidéos TeslaCam sur votre iPad/iPhone",
         helpStep2IOS: "Sélectionnez les fichiers vidéo (ex. 2024-01-15_12-30-00-front.mp4)",
         helpNote: "Note : cet outil n'envoie aucune donnée. Tout le traitement se fait en local.",
-        desktopTip: "💡 Astuce : à cause des limites du navigateur, la version bureau offre de meilleures performances.",
-        desktopDownload: "Télécharger la version bureau",
         mapModalTitle: "Voir sur la carte",
         googleMap: "Google Maps",
         revealFile: "Afficher le chemin",
@@ -237,7 +235,9 @@ const i18n = {
         ffmpegFastExporting: "Export rapide FFmpeg...",
         ffmpegMergingGrid: "Fusion de la mosaïque FFmpeg...",
         generatingOverlays: "Génération des incrustations...",
-        generatingOverlay: "Génération de l'incrustation"
+        generatingOverlay: "Génération de l'incrustation",
+        volumeEmpty: "Aucun clip trouvé dans le volume monté. Vérifiez que votre dossier TeslaCam - celui qui contient RecentClips, SavedClips et SentryClips - est bien monté sur /teslacam.",
+        volumeSource: "Lecture depuis le volume monté"
     }
 };
 
@@ -280,6 +280,11 @@ async function getTempDir() {
 }
 
 function getFileUrl(file) {
+    // Served from the mounted Docker volume: the file *is* an URL.
+    if (file instanceof VolumeFile) {
+        return file.url;
+    }
+
     const tauri = getTauri();
     if (tauri && file.path) {
         // Tauri 2: use core.convertFileSrc
@@ -7203,7 +7208,40 @@ class TeslaCamViewer {
         this.initializeFlatpickr();
         this.loadTheme();
         this.loadLanguage();
+        this.bootstrapSource();
+    }
+
+    /**
+     * Decide where the footage comes from.
+     *
+     * When the app runs in its container the user's TeslaCam folder is mounted
+     * at /teslacam, so there is nothing to pick: discover it and load. Only if
+     * no volume is mounted do we fall back to the local folder picker.
+     */
+    async bootstrapSource() {
+        this.isVolumeMode = false;
+        try {
+            const files = await loadTeslaCamVolume();
+            if (files) {
+                this.isVolumeMode = true;
+                document.body.classList.add('volume-mode');
+                if (files.length) {
+                    await this.handleFolderSelection(files);
+                } else {
+                    this.showVolumeEmptyMessage();
+                }
+                return;
+            }
+        } catch (e) {
+            console.warn('[volume] discovery failed, falling back to the folder picker:', e);
+        }
         this.loadLastTeslaCamPath();
+    }
+
+    showVolumeEmptyMessage() {
+        const translations = i18n[this.currentLanguage];
+        this.videoListComponent.container.innerHTML =
+            `<div class="empty-state"><p>${translations.volumeEmpty}</p></div>`;
     }
 
     // Drop stale data and free memory
@@ -8364,14 +8402,6 @@ class TeslaCamViewer {
         const step1 = useFileInput ? translations.helpStep1IOS : translations.helpStep1;
         const step2 = useFileInput ? translations.helpStep2IOS : translations.helpStep2;
         
-        // Show desktop tip only in web environment (not in Tauri)
-        const desktopTipHtml = !this.isTauri ? `
-            <p class="desktop-tip">
-                ${translations.desktopTip}
-                <a href="https://github.com/DeaglePC/TeslaCamPlayer/releases" target="_blank" class="desktop-link">${translations.desktopDownload}</a>
-            </p>
-        ` : '';
-        
         const helpHtml = `
             <div class="empty-state help-text">
                 <ol>
@@ -8379,7 +8409,6 @@ class TeslaCamViewer {
                     <li>${step2}</li>
                 </ol>
                 <p class="note">${translations.helpNote}</p>
-                ${desktopTipHtml}
             </div>
         `;
         this.videoListComponent.container.innerHTML = helpHtml;

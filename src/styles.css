@@ -3172,3 +3172,12 @@ body:not(.dark-theme) #cancelClipBtn:hover {
 
 
 
+
+/* ---------------------------------------------------------------------------
+   Docker volume mode
+
+   The footage comes from the mount, so there is nothing for the user to pick.
+   --------------------------------------------------------------------------- */
+body.volume-mode .sidebar-footer {
+    display: none;
+}

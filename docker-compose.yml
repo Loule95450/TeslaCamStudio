@@ -1,19 +1,17 @@
-version: '3.8'
-
 services:
-  tdashcam-studio:
-    image: dupengcheng66666/tdashcam-studio:latest
-    container_name: tdashcam-studio
+  teslacam-studio:
+    image: ghcr.io/loule95450/teslacamstudio:latest
+    container_name: teslacam-studio
     ports:
       - "8188:80"
-    restart: unless-stopped
+    volumes:
+      # Point this at the TeslaCam folder on your Tesla USB drive or NAS share.
+      # It is the folder that itself contains RecentClips / SavedClips /
+      # SentryClips. Read-only: the app never writes to your footage.
+      - ${TESLACAM_PATH:-./TeslaCam}:/teslacam:ro
     environment:
-      - TZ=Asia/Shanghai
-      - UMAMI_SCRIPT_URL=${UMAMI_SCRIPT_URL:-}
-      - UMAMI_WEBSITE_ID=${UMAMI_WEBSITE_ID:-}
-    networks:
-      - tdashcam-network
-
-networks:
-  tdashcam-network:
-    driver: bridge
+      # Leave these unset and the site is public to anyone who can reach the
+      # port - including your GPS track. Set them.
+      - AUTH_USER=${AUTH_USER:-}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-}
+    restart: unless-stopped

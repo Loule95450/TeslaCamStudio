@@ -1,4 +1,7 @@
 .git
+.github
 .gitignore
 Dockerfile
-.codebuddy
+docker-compose.yml
+README.md
+node_modules

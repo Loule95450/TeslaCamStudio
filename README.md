@@ -12,7 +12,7 @@
   <a href="https://app.tdashcam.studio/"><img src="https://img.shields.io/badge/Website-app.tdashcam.studio-blue?style=flat-square" alt="Website"></a>
 </p>
 
-A modern, browser-based viewer for your Tesla dashcam footage. Play all six camera angles (Front, Back, Left, Right, Left B-Pillar, Right B-Pillar) simultaneously with a sleek and intuitive interface. Now available as a **desktop application**!
+A modern, browser-based viewer for your Tesla dashcam footage. Play all six camera angles (Front, Back, Left, Right, Left B-Pillar, Right B-Pillar) simultaneously with a sleek and intuitive interface. Deployed as a single container, reading straight from a mounted volume.
 
 ## 🆚 Why choose TDashcam Studio?
 
@@ -82,147 +82,93 @@ Compared to the original Tesla Dashcam player, this project provides more powerf
 *   **Privacy & Performance**: 100% local processing in your browser (Canvas API & MediaRecorder). Your data never leaves your device.
 
 
-## 🚀 How to Use
+## 🚀 Deployment
 
-### 🖥️ Desktop Application (Recommended)
+TeslaCam Studio runs as a single container. You mount your TeslaCam folder into
+it, and the footage shows up in the browser - there is no folder to pick and
+nothing to upload.
 
-Download the desktop application for your platform from the [Releases](https://github.com/DeaglePC/TDashcamStudio/releases) page:
+### Docker Compose
 
-| Platform | Download |
-|----------|----------|
-| Windows | `.exe` / `.msi` |
-| macOS (Apple Silicon) | `.dmg` (aarch64) |
-| macOS (Intel) | `.dmg` (x64) |
-| Linux | `.deb` / `.AppImage` |
-
-> **Note for macOS Users:**
-> If you encounter the "App is damaged and can't be opened" error, this is due to Apple's security quarantine. Please run the following command in Terminal to fix it:
-> ```bash
-> sudo xattr -rd com.apple.quarantine /Applications/TDashcam\ Studio.app
-> ```
-> *(Adjust the path if your app is not in the /Applications folder)*
-
-**Advantages of Desktop App:**
-- No need to start a local server
-- Native file system access
-- Better performance
-- Works offline
-
-![Desktop Application](.github/assets/mac.webp)
-
----
-
-### 🌐 Online Version (Quickest Way)
-
-You can directly use the online version without any installation:
-
-**👉 [https://teslacam.dpc.cool/](https://teslacam.dpc.cool/)**
-
-Simply visit the website and select your TeslaCam folder to start using it right away. All processing is done locally in your browser, ensuring your privacy.
-
----
-
-### 💻 Local Deployment
-
-Because of web browser security policies, you need to run this application from a local web server.
-
-**1. Start the Local Server**
-
-If you have Node.js installed, the easiest way is to use `npx`:
-
-```bash
-npx http-server -p 8188 src
+```yaml
+services:
+  teslacam-studio:
+    image: ghcr.io/loule95450/teslacamstudio:latest
+    container_name: teslacam-studio
+    ports:
+      - "8188:80"
+    volumes:
+      # The folder that contains RecentClips / SavedClips / SentryClips.
+      - /mnt/usb/TeslaCam:/teslacam:ro
+    environment:
+      - AUTH_USER=me
+      - AUTH_PASSWORD=change-me
+    restart: unless-stopped
 ```
 
-Then, open your browser and go to `http://localhost:8188`.
+```bash
+docker compose up -d
+```
 
-**2. Deploy with Docker**
+Then open <http://localhost:8188>.
 
-If you have Docker installed, you can easily run the application in a container.
+### Docker CLI
 
-**Option A: Using Docker Compose (Recommended)**
+```bash
+docker run -d --name teslacam-studio -p 8188:80 \
+  -v /mnt/usb/TeslaCam:/teslacam:ro \
+  -e AUTH_USER=me -e AUTH_PASSWORD=change-me \
+  ghcr.io/loule95450/teslacamstudio:latest
+```
 
-The easiest way is to use Docker Compose with the pre-built image:
+### The volume
 
-1.  **Start the application:**
-    ```bash
-    docker compose up -d
-    ```
+Mount the folder that *contains* the Tesla subfolders:
 
-2.  **Access the application:**
-    Open your browser and go to `http://localhost:8188`.
+```
+/mnt/usb/TeslaCam        <- mount this at /teslacam
+├── RecentClips/
+├── SavedClips/
+│   └── 2024-01-15_12-30-00/
+│       ├── 2024-01-15_12-30-00-front.mp4
+│       ├── event.json
+│       └── thumb.png
+└── SentryClips/
+```
 
-3.  **Stop the application:**
-    ```bash
-    docker compose down
-    ```
+A `TeslaCam/` folder one level down is detected too, so mounting the drive root
+works as well. Keep the mount **read-only** (`:ro`) - the app never writes to
+your footage.
 
-4.  **View logs:**
-    ```bash
-    docker compose logs -f
-    ```
+nginx exposes the mount as a JSON directory listing, and the frontend walks it
+to build the clip list. Video is served with byte-range support, so seeking and
+scrubbing work without downloading whole files.
 
-5.  **Update to latest version:**
-    ```bash
-    docker compose pull
-    docker compose up -d
-    ```
+### 🔐 Authentication
 
-**Option B: Using Docker CLI**
+`AUTH_USER` and `AUTH_PASSWORD` put the whole site behind HTTP basic auth,
+footage included.
 
-1.  **Pull and run the pre-built image:**
-    ```bash
-    docker run -d -p 8188:80 --name tdashcam-studio dupengcheng66666/tdashcam-studio:latest
-    ```
+**Leave them unset and everything is public to anyone who can reach the port** -
+your videos and the GPS track in their metadata. The container prints a loud
+warning at startup when that is the case. Basic auth is only as private as the
+transport, so put a TLS-terminating reverse proxy in front of it if the
+instance is reachable from the internet.
 
-2.  **Or build your own image:**
-    ```bash
-    docker build -t tdashcam-studio .
-    docker run -d -p 8188:80 tdashcam-studio
-    ```
+### Building it yourself
 
-3.  **Access the application:**
-    Open your browser and go to `http://localhost:8188`.
+```bash
+docker build -t teslacam-studio .
+```
 
-**3. Select Your TeslaCam Folder**
+### Running without Docker
 
-1.  Click the "📁 Select Folder" button.
-2.  In the file selection dialog, navigate to and select the root `TeslaCam` folder from your USB drive.
+Any static file server works, but the footage is then served from wherever you
+point it - the volume features assume the container's nginx config.
 
-**4. Browse and Play**
-
-![Video Playback](.github/assets/play.webp)
-
-*   Your recordings will appear in the sidebar, sorted by date.
-*   Use the filters to find specific events.
-*   Click on any event to start playing.
-*   Click on a city name (if available) to open the location on Gaode Map or Google Maps.
-*   When paused, click the 💾 icon in the header to download the current video file.
-
-**5. Clip and Export Videos**
-
-![Clip Selection](.github/assets/clip.webp)
-
-1.  Click the **✂️ (scissors)** icon in the video controls to enter clip mode.
-2.  **Drag the blue handles** on the progress bar to select the start and end points of your desired clip.
-3.  Click the **✓ (checkmark)** icon to confirm your selection and open the export dialog.
-
-![Export Dialog](.github/assets/export.webp)
-
-4.  **Configure export options**:
-    - **Select Cameras**: Choose which camera angles to export (Front, Back, Left, Right, Left B-Pillar, Right B-Pillar, or any combination)
-    - **Add Timestamp Watermark**: Overlay real-time timestamp showing the exact recording time
-    - **Merge as Grid Video**: Combine all selected cameras into a grid view (2x2 or 2x3) with enhanced text visibility
-5.  Click **"Start Export"** to process and download your clip(s).
-
-**Key Features:**
-- Automatically handles clips spanning multiple 1-minute video segments
-- Maintains accurate timestamps across all segments
-- Grid videos feature double-sized text (36px camera labels, 48px timestamps) for better readability
-- All processing is done locally in your browser using Canvas API and MediaRecorder
-- Exported videos are in WebM format with H.264 codec
-
-*Note: For clips longer than 1 minute, the application automatically processes all required video segments and concatenates them seamlessly.*
+```bash
+npm run serve
+```
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -230,7 +176,12 @@ The easiest way is to use Docker Compose with the pre-built image:
 
 ## 🔒 Privacy First
 
-This tool is built with privacy as a top priority. **All file processing happens directly in your browser.** Your videos and data are never uploaded to any server. It's completely private and secure.
+All video decoding and metadata parsing happens in your browser. Nothing is
+uploaded anywhere: the footage is read straight off the volume you mounted, and
+it never leaves the machine you run the container on.
+
+That does mean the instance itself is the boundary. Set `AUTH_USER` /
+`AUTH_PASSWORD`, and do not expose it to the internet without TLS.
 
 ## 🛠️ Tech Stack
 
