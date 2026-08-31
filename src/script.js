@@ -121,7 +121,17 @@ const i18n = {
         volumeWrongFolder: "The mounted folder is not a TeslaCam folder: it has no RecentClips, SavedClips or SentryClips inside. Found instead:",
         volumeNoClips: "The TeslaCam folder was found, but it contains no clips.",
         volumeUnreachable: "Could not read /teslacam. The container may not be serving the volume.",
-        volumeSource: "Reading from the mounted volume"
+        volumeSource: "Reading from the mounted volume",
+        encryptedTitle: "This clip is encrypted",
+        encryptedBody: "Since vehicle software 2026.20 your Tesla encrypts dashcam footage on the USB drive by default. The keys are held by Tesla against your account, not stored on the drive, so no local player can open these files.",
+        encryptedFixNew: "For future recordings: turn off Controls > Safety > Encrypt Dashcam Recordings in the car.",
+        encryptedFixExisting: "For clips you already have: decrypt them at dashcam.tesla.com, then copy the decrypted files back to this folder.",
+        encryptedBadge: "Encrypted",
+        hideEncrypted: "Hide encrypted clips",
+        hideClip: "Hide this clip",
+        showHidden: "hidden - show all",
+        showHiddenOne: "hidden - show all",
+        noRecordsHidden: "Every clip here is hidden by your filters."
     },
     fr: {
         pageTitle: "TeslaCam Studio",
@@ -245,7 +255,17 @@ const i18n = {
         volumeWrongFolder: "Le dossier monté n'est pas un dossier TeslaCam : il ne contient ni RecentClips, ni SavedClips, ni SentryClips. Trouvé à la place :",
         volumeNoClips: "Le dossier TeslaCam a été trouvé, mais il ne contient aucun clip.",
         volumeUnreachable: "Impossible de lire /teslacam. Le conteneur ne sert peut-être pas le volume.",
-        volumeSource: "Lecture depuis le volume monté"
+        volumeSource: "Lecture depuis le volume monté",
+        encryptedTitle: "Ce clip est chiffré",
+        encryptedBody: "Depuis la version 2026.20 du logiciel véhicule, votre Tesla chiffre par défaut les vidéos sur la clé USB. Les clés sont détenues par Tesla et liées à votre compte, elles ne sont pas sur la clé : aucun lecteur local ne peut donc ouvrir ces fichiers.",
+        encryptedFixNew: "Pour les prochains enregistrements : désactivez Commandes > Sécurité > Chiffrer les enregistrements de la Dashcam dans la voiture.",
+        encryptedFixExisting: "Pour les clips déjà enregistrés : déchiffrez-les sur dashcam.tesla.com, puis recopiez les fichiers déchiffrés dans ce dossier.",
+        encryptedBadge: "Chiffré",
+        hideEncrypted: "Masquer les clips chiffrés",
+        hideClip: "Masquer ce clip",
+        showHidden: "masqués - tout afficher",
+        showHiddenOne: "masqué - tout afficher",
+        noRecordsHidden: "Tous les clips sont masqués par vos filtres."
     }
 };
 
@@ -2294,10 +2314,11 @@ class VideoListComponent {
         }
 
         const eventTypeLabel = this.getEventTypeLabel(event.eventType);
+        const t = i18n[this.viewer.currentLanguage];
 
         infoDiv.innerHTML = `
             <div class="video-time">
-                <span class="video-type-tag" title="${eventTypeLabel}" aria-label="${eventTypeLabel}">${this.getEventTypeIcon(event.eventType)}</span>
+                <span class="video-type-tag" title="${eventTypeLabel}" aria-label="${eventTypeLabel}">${this.getEventTypeIcon(event.eventType)}</span>${event.encrypted ? `<span class="encrypted-badge" title="${t.encryptedTitle}">${t.encryptedBadge}</span>` : ''}<button type="button" class="hide-clip-btn" title="${t.hideClip}" aria-label="${t.hideClip}"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
                 ${cityHtml}${timeString}
             </div>
         `;
@@ -2305,6 +2326,12 @@ class VideoListComponent {
         
         // Attach event listener to the card, but check for city-link target
         card.onclick = (e) => {
+            const hideBtn = e.target.closest('.hide-clip-btn');
+            if (hideBtn) {
+                e.stopPropagation();
+                this.viewer.hideClip(event.eventId);
+                return;
+            }
             if (e.target.classList.contains('city-link')) {
                 e.stopPropagation(); // Prevent card click from firing
                 this.viewer.showMapModal(e.target.dataset.lat, e.target.dataset.lon);
@@ -7158,6 +7185,7 @@ class TeslaCamViewer {
         this.currentEvent = null;
         this.currentLanguage = 'en';
         this.currentMapCoordinates = null;
+        this.hiddenClips = this.loadHiddenClips();
         this.flatpickrInstance = null;
         this.videoClipProcessor = new VideoClipProcessor();
         this.metadataManager = new MetadataManager(this);
@@ -7168,6 +7196,9 @@ class TeslaCamViewer {
             dateFilter: document.getElementById('dateFilter'),
             clearDateBtn: document.getElementById('clearDateBtn'),
             eventFilter: document.getElementById('eventFilter'),
+            hideEncrypted: document.getElementById('hideEncrypted'),
+            hideEncryptedLabel: document.getElementById('hideEncryptedLabel'),
+            showHiddenBtn: document.getElementById('showHiddenBtn'),
             sidebar: document.querySelector('.sidebar'),
             toggleSidebarBtn: document.getElementById('toggleSidebarBtn'),
             openSidebarBtn: document.getElementById('openSidebarBtn'),
@@ -7342,6 +7373,16 @@ class TeslaCamViewer {
             }
         });
         this.dom.folderInput.addEventListener('change', (e) => this.handleFolderSelection(e.target.files));
+        if (this.dom.hideEncrypted) {
+            this.dom.hideEncrypted.checked = localStorage.getItem('hideEncrypted') === '1';
+            this.dom.hideEncrypted.addEventListener('change', () => {
+                localStorage.setItem('hideEncrypted', this.dom.hideEncrypted.checked ? '1' : '0');
+                this.filterAndRender();
+            });
+        }
+        if (this.dom.showHiddenBtn) {
+            this.dom.showHiddenBtn.addEventListener('click', () => this.unhideAllClips());
+        }
         this.dom.fileInputIOS.addEventListener('change', (e) => this.handleIOSFileSelection(e.target.files));
 
         // Drag & Drop Support
@@ -7833,6 +7874,7 @@ class TeslaCamViewer {
         }
 
         this.eventGroups = await this.processFiles(this.allFiles);
+        await markEncryptedEvents(this.eventGroups);
         console.log('[handleFolderSelection] eventGroups:', this.eventGroups.length);
         this.filterAndRender();
     }
@@ -7870,6 +7912,7 @@ class TeslaCamViewer {
         }
 
         this.eventGroups = await this.processFiles(this.allFiles);
+        await markEncryptedEvents(this.eventGroups);
         this.filterAndRender();
     }
 
@@ -7940,19 +7983,71 @@ class TeslaCamViewer {
         }).filter(e => e.segments.length > 0).sort((a, b) => b.startTime.localeCompare(a.startTime));
     }
 
+    /* Clips the user has hidden by hand. Kept per browser: it is a view
+       preference, not something to write back onto a read-only volume. */
+    loadHiddenClips() {
+        try {
+            return new Set(JSON.parse(localStorage.getItem('hiddenClips') || '[]'));
+        } catch {
+            return new Set();
+        }
+    }
+
+    saveHiddenClips() {
+        try {
+            localStorage.setItem('hiddenClips', JSON.stringify([...this.hiddenClips]));
+        } catch { /* private mode, or storage full: the filter just will not persist */ }
+    }
+
+    hideClip(eventId) {
+        this.hiddenClips.add(eventId);
+        this.saveHiddenClips();
+        this.filterAndRender();
+    }
+
+    unhideAllClips() {
+        this.hiddenClips.clear();
+        this.saveHiddenClips();
+        this.filterAndRender();
+    }
+
     filterAndRender() {
         const dateFilter = this.dom.dateFilter.value;
         const eventFilter = this.dom.eventFilter.value;
-        const filteredEvents = this.eventGroups.filter(event => 
-            (!dateFilter || event.startTime.startsWith(dateFilter)) && 
-            (!eventFilter || event.eventType === eventFilter)
+        const hideEncrypted = this.dom.hideEncrypted && this.dom.hideEncrypted.checked;
+
+        const filteredEvents = this.eventGroups.filter(event =>
+            (!dateFilter || event.startTime.startsWith(dateFilter)) &&
+            (!eventFilter || event.eventType === eventFilter) &&
+            !(hideEncrypted && event.encrypted) &&
+            !this.hiddenClips.has(event.eventId)
         );
+
+        this.updateHiddenCount();
         this.videoListComponent.render(filteredEvents);
+    }
+
+    updateHiddenCount() {
+        const btn = this.dom.showHiddenBtn;
+        if (!btn) return;
+        const hidden = this.eventGroups.filter(e => this.hiddenClips.has(e.eventId)).length;
+        btn.hidden = hidden === 0;
+        const t = i18n[this.currentLanguage];
+        btn.textContent = `${hidden} ${hidden === 1 ? t.showHiddenOne : t.showHidden}`;
     }
 
     async playEvent(eventId) {
         const event = this.eventGroups.find(e => e.eventId === eventId);
         if (!event) return;
+
+        // Encrypted clips are not MP4 at all, so the player would just fail
+        // with an opaque decode error. Explain instead.
+        if (event.encrypted) {
+            this.showEncryptedNotice();
+            return;
+        }
+        this.hideEncryptedNotice();
+
         this.currentEvent = event;
 
         if (this.dom.headerLocationDisplay) {
@@ -8698,6 +8793,7 @@ class TeslaCamViewer {
             
             this.allFiles = files;
             this.eventGroups = await this.processFiles(this.allFiles);
+        await markEncryptedEvents(this.eventGroups);
             console.log('[loadDirectoryFromHandle] eventGroups:', this.eventGroups.length);
             this.filterAndRender();
             
@@ -8852,6 +8948,8 @@ class TeslaCamViewer {
             this.dom.langToggleBtn.textContent = lang === 'fr' ? 'EN' : 'FR';
         }
         
+        if (this.dom.hideEncryptedLabel) this.dom.hideEncryptedLabel.textContent = translations.hideEncrypted;
+        this.updateHiddenCount();
         this.dom.langToggleBtn.title = translations.toggleLanguage;
         this.dom.themeToggleBtn.title = translations.toggleTheme;
         this.dom.toggleSidebarBtn.title = translations.toggleSidebar;
@@ -9708,6 +9806,33 @@ class TeslaCamViewer {
             this.dom.startClipBtn.disabled = false;
             this.dom.cancelClipBtn.disabled = false;
         }
+    }
+
+    showEncryptedNotice() {
+        const t = i18n[this.currentLanguage];
+        const area = document.getElementById('playerArea');
+        if (!area) return;
+        let panel = document.getElementById('encryptedNotice');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'encryptedNotice';
+            panel.className = 'encrypted-notice';
+            area.appendChild(panel);
+        }
+        panel.innerHTML = `
+            <svg class="icon icon-lg" aria-hidden="true"><use href="#i-shield-check"/></svg>
+            <h3>${t.encryptedTitle}</h3>
+            <p>${t.encryptedBody}</p>
+            <ul>
+                <li>${t.encryptedFixNew}</li>
+                <li>${t.encryptedFixExisting}</li>
+            </ul>`;
+        panel.style.display = 'flex';
+    }
+
+    hideEncryptedNotice() {
+        const panel = document.getElementById('encryptedNotice');
+        if (panel) panel.style.display = 'none';
     }
 
     showMapModal(lat, lon) {

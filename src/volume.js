@@ -203,3 +203,72 @@ async function loadTeslaCamVolume() {
     console.log(`[volume] ${files.length} files discovered under ${probe.url}`);
     return { status: files.length ? 'ok' : 'no-clips', files };
 }
+
+/* ---------------------------------------------------------------------------
+   Encrypted clips
+
+   Vehicle software 2026.20 encrypts dashcam footage on the USB drive by
+   default. The folder layout and the .mp4 extension are unchanged, but the
+   bytes are AES-128-CBC in 4096-byte chunks, so no player can open them.
+
+   The per-file keys live on Tesla's servers, not on the drive, and are fetched
+   against a Tesla account. That means this app cannot decrypt anything: the
+   most useful thing it can do is recognise an encrypted clip and say so,
+   rather than handing the browser a file it will silently fail to decode.
+
+   Detection is cheap and definitive: a real MP4 carries the `ftyp` box type at
+   offset 4, and an encrypted clip does not.
+   --------------------------------------------------------------------------- */
+
+const MP4_FTYP = [0x66, 0x74, 0x79, 0x70]; // "ftyp"
+
+/** Read the first `n` bytes of a clip, whichever kind of file object it is. */
+async function readFileHead(file, n = 16) {
+    if (typeof File !== 'undefined' && file instanceof File) {
+        return new Uint8Array(await file.slice(0, n).arrayBuffer());
+    }
+    const url = file.url || file.path;
+    if (!url) return null;
+    const response = await fetch(url, { headers: { Range: `bytes=0-${n - 1}` } });
+    if (!response.ok) return null;
+    return new Uint8Array(await response.arrayBuffer());
+}
+
+/**
+ * True when the file is not a playable MP4, which for a TeslaCam .mp4 means
+ * it is encrypted. Returns null when the check could not be made, so callers
+ * can tell "not encrypted" apart from "do not know".
+ */
+async function isClipEncrypted(file) {
+    let head;
+    try {
+        head = await readFileHead(file, 16);
+    } catch {
+        return null;
+    }
+    if (!head || head.length < 8) return null;
+    return !MP4_FTYP.every((b, i) => head[4 + i] === b);
+}
+
+/**
+ * Probe one representative clip per event, a few at a time, and tag the event.
+ * Encryption is a per-recording setting, so one segment answers for the event.
+ */
+async function markEncryptedEvents(events) {
+    const targets = events
+        .map((event) => {
+            const segment = event.segments && event.segments[0];
+            const file = segment && segment.files &&
+                Object.values(segment.files).find((f) => f && f.name.endsWith('.mp4'));
+            return file ? { event, file } : null;
+        })
+        .filter(Boolean);
+
+    await mapWithConcurrency(targets, VOLUME_FETCH_CONCURRENCY, async ({ event, file }) => {
+        event.encrypted = await isClipEncrypted(file);
+    });
+
+    const count = events.filter((e) => e.encrypted).length;
+    if (count) console.warn(`[encryption] ${count} of ${events.length} events are encrypted clips`);
+    return count;
+}

@@ -3350,3 +3350,139 @@ button:not(:disabled):active,
     width: 15px;
     height: 15px;
 }
+
+/* ---------------------------------------------------------------------------
+   Encrypted clips (vehicle software 2026.20+)
+   --------------------------------------------------------------------------- */
+
+.encrypted-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin-left: var(--space-1);
+    padding: 1px var(--space-2);
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-full);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.encrypted-notice {
+    position: absolute;
+    inset: 0;
+    /* Above every camera tile and its label. The pip tiles and their labels
+       climb to 40, so this has to clear them or the video shows through. */
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-6);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.encrypted-notice h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.encrypted-notice p,
+.encrypted-notice li {
+    max-width: 56ch;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-size: 0.9375rem;
+}
+
+.encrypted-notice ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-left: var(--space-4);
+    text-align: left;
+}
+
+.encrypted-notice .icon {
+    color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Hiding clips
+   --------------------------------------------------------------------------- */
+
+.filter-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.filter-check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    user-select: none;
+}
+
+.filter-check input {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.link-btn {
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.hide-clip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding: 2px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+
+.video-card:hover .hide-clip-btn,
+.hide-clip-btn:focus-visible {
+    opacity: 1;
+}
+
+.hide-clip-btn:hover {
+    background: var(--bg-active);
+    color: var(--text-primary);
+}
+
+.hide-clip-btn .icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Touch devices have no hover, so the control must always be reachable. */
+@media (hover: none) {
+    .hide-clip-btn { opacity: 1; }
+}

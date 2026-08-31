@@ -1,9 +1,25 @@
 name: Container
 
 # One job, one trigger: every push to main publishes a new image.
+#
+# Two ways to avoid burning a build:
+#
+#   1. Put [skip ci] in a commit message. GitHub honours it natively on push
+#      and pull_request events, along with [ci skip], [no ci], [skip actions]
+#      and [actions skip]. It applies if ANY commit in the push carries it, so
+#      it works for a batch of work-in-progress commits.
+#   2. Touch only the paths ignored below. Documentation changes cannot alter
+#      the image, so they do not rebuild it.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'doc/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**'
+      - '!.github/workflows/docker.yml'
   workflow_dispatch:
 
 concurrency:
