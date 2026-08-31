@@ -17,6 +17,8 @@ const VOLUME_MAX_DEPTH = 4;
 const VOLUME_FETCH_CONCURRENCY = 8;
 
 const TESLACAM_SUBFOLDERS = ['RecentClips', 'SavedClips', 'SentryClips'];
+// Vehicle software 2026.20+ writes encrypted clips into their own tree.
+const ENCRYPTED_DIR = 'EncryptedClips';
 const VOLUME_WANTED_FILES = /\.(mp4|png)$|^event\.json$/i;
 
 class VolumeFile {
@@ -54,8 +56,16 @@ class VolumeFile {
         return '';
     }
 
+    /** The URL to actually read from: decrypted when the sidecar can serve it. */
+    get readUrl() {
+        return this.useDecrypt ? this.decryptUrl : this.url;
+    }
+
     async #fetch() {
-        const response = await fetch(this.url);
+        // Must follow useDecrypt like getFileUrl does. Reading this.url here
+        // handed the metadata parser the encrypted bytes, which surfaced as
+        // 'Box "moov" not found' on every encrypted clip.
+        const response = await fetch(this.readUrl);
         if (!response.ok) {
             throw new Error(`Failed to read ${this.webkitRelativePath}: HTTP ${response.status}`);
         }
@@ -178,7 +188,7 @@ async function probeTeslaCamVolume() {
     const dirs = root.entries.filter((e) => e && e.type === 'directory').map((e) => e.name);
     const all = root.entries.filter((e) => e && e.name).map((e) => e.name);
 
-    if (dirs.some((name) => TESLACAM_SUBFOLDERS.includes(name))) {
+    if (dirs.some((name) => TESLACAM_SUBFOLDERS.includes(name) || name === ENCRYPTED_DIR)) {
         return { status: 'ok', url: VOLUME_ROOT, label: 'TeslaCam' };
     }
 
@@ -289,6 +299,11 @@ async function markEncryptedEvents(events) {
         .filter(Boolean);
 
     await mapWithConcurrency(targets, VOLUME_FETCH_CONCURRENCY, async ({ event, file }) => {
+        // Living under EncryptedClips/ settles it without reading anything.
+        if (file.webkitRelativePath.includes(`/${ENCRYPTED_DIR}/`)) {
+            event.encrypted = true;
+            return;
+        }
         event.encrypted = await isClipEncrypted(file);
     });
 

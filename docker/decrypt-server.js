@@ -93,7 +93,9 @@ async function fetchKey(meta) {
         response = await request();
     }
     if (!response.ok) {
-        throw new Error(`Tesla key request failed: HTTP ${response.status}`);
+        let detail = '';
+        try { detail = (await response.text()).slice(0, 200).replace(/\s+/g, ' '); } catch { /* body already gone */ }
+        throw new Error(`Tesla key request failed: HTTP ${response.status}${detail ? ` - ${detail}` : ''}`);
     }
 
     const body = await response.json();
@@ -149,6 +151,9 @@ async function serveClip(req, res, rel) {
     try {
         const stat = await fd.stat();
         const meta = C.parseHeader(await readHeader(fd));
+        log.info(`[decrypt] ${path.basename(file)} size=${stat.size} uuid=${meta.id} ` +
+                 `key_id=${meta.key_id} vin=${meta.vin.slice(0, 3)}***${meta.vin.slice(-4)} ` +
+                 `ec=0x${Buffer.from(meta.public_key, 'base64')[0].toString(16)}`);
         const key = await fetchKey(meta);
         const size = await plaintextSize(fd, key, stat.size);
 
@@ -188,6 +193,52 @@ async function serveClip(req, res, rel) {
     }
 }
 
+/**
+ * Report how a real file is laid out, for checking the offsets against a drive
+ * without anyone having to send the footage anywhere. Deliberately omits the
+ * wrapped key and the full public key: those are key material.
+ */
+async function inspectClip(res, rel) {
+    const file = safePath(rel);
+    if (!file) return send(res, 400, 'bad path');
+    let fd;
+    try {
+        fd = await fsp.open(file, 'r');
+    } catch {
+        return send(res, 404, 'not found');
+    }
+    try {
+        const stat = await fd.stat();
+        const head = Buffer.alloc(Math.min(C.HEADER_SIZE, stat.size));
+        await fd.read(head, 0, head.length, 0);
+        const at = (o, n) => head.length >= o + n ? head.subarray(o, o + n).toString('hex') : null;
+        let parsed = null, parseError = null;
+        try { parsed = C.parseHeader(head); } catch (e) { parseError = e.message; }
+        sendJson(res, 200, {
+            size: stat.size,
+            payloadWouldStartAt: C.PAYLOAD_START,
+            looksLikePlainMp4: head.subarray(4, 8).toString() === 'ftyp',
+            firstBytes: at(0x0000, 48),
+            atPage2: at(0x1000, 48),
+            parsed: parsed && {
+                uuid: parsed.id,
+                key_id: parsed.key_id,
+                vin: parsed.vin.replace(/.(?=.{4})/g, '*'),
+                vinLooksValid: /^[A-HJ-NPR-Z0-9]{17}$/.test(parsed.vin),
+                timestamp: parsed.timestamp,
+                publicKeyFirstByte: '0x' + Buffer.from(parsed.public_key, 'base64')[0].toString(16),
+                publicKeyBytes: Buffer.from(parsed.public_key, 'base64').length,
+                wrappedKeyBytes: Buffer.from(parsed.wrapped_key, 'base64').length,
+            },
+            parseError,
+        });
+    } catch (e) {
+        send(res, 500, e.message);
+    } finally {
+        await fd.close().catch(() => {});
+    }
+}
+
 function sendJson(res, code, payload) {
     const body = JSON.stringify(payload);
     res.writeHead(code, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
@@ -206,6 +257,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/decrypt/clip/')) {
         return serveClip(req, res, url.pathname.slice('/decrypt/clip/'.length));
+    }
+    if (url.pathname.startsWith('/decrypt/inspect/')) {
+        return inspectClip(res, url.pathname.slice('/decrypt/inspect/'.length));
     }
     send(res, 404, 'not found');
 });
