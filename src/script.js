@@ -283,121 +283,14 @@ function cameraLabel(camera, lang) {
     return key ? (i18n[lang] || i18n.en)[key] : null;
 }
 
-// --- Tauri Helper Functions ---
-function getTauri() {
-    return window.__TAURI__;
-}
-
-// Get system temp directory for temporary files
-async function getTempDir() {
-    const tauri = getTauri();
-    if (tauri && tauri.path && tauri.path.tempDir) {
-        try {
-            const tempDir = await tauri.path.tempDir();
-            // Ensure no trailing separator for consistency
-            return tempDir.replace(/[\/\\]$/, '');
-        } catch (e) {
-            console.warn('[getTempDir] Failed to get temp dir:', e);
-        }
-    }
-    // Fallback for different OS
-    if (typeof process !== 'undefined' && process.env) {
-        return process.env.TEMP || process.env.TMP || '/tmp';
-    }
-    return '/tmp';
-}
-
 function getFileUrl(file) {
     // Served from the mounted Docker volume: the file *is* an URL.
     if (file instanceof VolumeFile) {
         return file.url;
     }
-
-    const tauri = getTauri();
-    if (tauri && file.path) {
-        // Tauri 2: use core.convertFileSrc
-        let convertFn = null;
-        if (tauri.core && tauri.core.convertFileSrc) {
-            convertFn = tauri.core.convertFileSrc;
-        } else if (tauri.tauri && tauri.tauri.convertFileSrc) {
-            convertFn = tauri.tauri.convertFileSrc;
-        } else if (tauri.convertFileSrc) {
-            convertFn = tauri.convertFileSrc;
-        }
-        
-        if (convertFn) {
-            const url = convertFn(file.path);
-            console.log('[getFileUrl] path:', file.path, '-> url:', url);
-            return url;
-        }
-        
-        // Fallback: return path directly (won't work but helps debug)
-        console.warn('[getFileUrl] No convertFileSrc found, returning raw path');
-        return file.path;
-    }
     return URL.createObjectURL(file);
 }
 
-class TauriFile {
-    constructor(entry, rootPath) {
-        this.name = entry.name;
-        this.path = entry.path; 
-        
-        // Calculate webkitRelativePath - must use forward slashes
-        if (this.path && rootPath) {
-             // Normalize all separators to forward slashes
-             const normalizedPath = this.path.replace(/\\/g, '/');
-             const normalizedRoot = rootPath.replace(/\\/g, '/');
-             
-             // Get the root folder name (e.g., "TeslaCam")
-             const rootName = normalizedRoot.split('/').filter(Boolean).pop();
-             
-             // Get the relative part after the root path
-             const relativePart = normalizedPath.substring(normalizedRoot.length);
-             const cleanRelative = relativePart.startsWith('/') ? relativePart.slice(1) : relativePart;
-             
-             if (cleanRelative) {
-                 // Ensure forward slashes in the final path
-                 this.webkitRelativePath = (rootName + '/' + cleanRelative).replace(/\\/g, '/');
-             } else {
-                 this.webkitRelativePath = this.name;
-             }
-             
-             console.log('[TauriFile] path:', this.path, '-> webkitRelativePath:', this.webkitRelativePath);
-        } else {
-             this.webkitRelativePath = this.name;
-        }
-
-        this.lastModified = 0;
-        this.size = 0; 
-        this.type = this.guessType(this.name);
-    }
-    
-    guessType(name) {
-        if (name.endsWith('.mp4')) return 'video/mp4';
-        if (name.endsWith('.json')) return 'application/json';
-        if (name.endsWith('.png')) return 'image/png';
-        return '';
-    }
-
-    async text() {
-        const tauri = getTauri();
-        if (!tauri) throw new Error("Tauri API not found");
-        return await tauri.fs.readTextFile(this.path);
-    }
-    
-    async arrayBuffer() {
-        const tauri = getTauri();
-        if (!tauri) throw new Error("Tauri API not found");
-        const binary = await tauri.fs.readFile(this.path);
-        return binary.buffer;
-    }
-}
-// --- End Tauri Helper ---
-
-// ============================================================
-// Metadata Overlay Generator for FFmpeg (PNG icons + overlay filter)
-// ============================================================
 class MetadataOverlayGenerator {
     constructor() {
         // Gear mapping
@@ -1037,254 +930,6 @@ class MetadataOverlayGenerator {
         };
     }
     
-    /**
-     * Generate all unique overlay PNGs needed for the video and save them
-     * Returns a map of stateKey -> pngPath, or null if too many unique states
-     */
-    async generateOverlayPngs(allMetadata, clipSegments, workDir, width = 1920, height = 1080, progressCallback = null, language = 'en') {
-        const tauri = window.__TAURI__;
-        const fs = tauri.fs;
-        
-        const pathSeparator = workDir.includes('\\') ? '\\' : '/';
-        const timestamp = Date.now();
-        const pngDir = `${workDir}${pathSeparator}overlay_pngs_${timestamp}`;
-        
-        // Collect all unique metadata states first
-        const uniqueStates = new Map();
-        
-        for (const segMeta of allMetadata) {
-            if (!segMeta.metadata) continue;
-            for (const item of segMeta.metadata) {
-                if (!item.data) continue;
-                const key = this.getMetadataStateKey(item.data);
-                if (!uniqueStates.has(key)) {
-                    uniqueStates.set(key, item.data);
-                }
-            }
-        }
-        
-        // Limit the number of unique PNGs to avoid FFmpeg command line length issues
-        const MAX_UNIQUE_PNGS = 500;
-        if (uniqueStates.size > MAX_UNIQUE_PNGS) {
-            console.warn(`[MetadataOverlay] Too many unique states (${uniqueStates.size}), falling back to ASS subtitles`);
-            return null;
-        }
-        
-        progressCallback?.(`Generating ${uniqueStates.size} metadata overlays...`);
-        
-        // Create directory for PNGs
-        await fs.mkdir(pngDir, { recursive: true });
-        
-        // Generate and save background PNG first
-        const bgResult = await this.generateBackgroundPng();
-        const bgPath = `${pngDir}${pathSeparator}background.png`;
-        await fs.writeFile(bgPath, bgResult.data);
-
-        // Generate PNG for each unique state
-        const pngPaths = new Map();
-        pngPaths.set('__background__', bgPath);
-        let idx = 0;
-        
-        for (const [key, data] of uniqueStates) {
-            try {
-                const result = await this.generateMetadataOverlayPng(data);
-                const pngPath = `${pngDir}${pathSeparator}overlay_${idx}.png`;
-                
-                await fs.writeFile(pngPath, result.data);
-                pngPaths.set(key, pngPath);
-                idx++;
-                
-                if (idx % 20 === 0) {
-                    progressCallback?.(`Generating overlay ${idx}/${uniqueStates.size}...`);
-                    // Short sleep to yield main thread
-                    await new Promise(r => setTimeout(r, 0));
-                }
-            } catch (err) {
-                console.error(`[MetadataOverlay] Failed to generate PNG for key ${key}:`, err);
-                // Continue with next state instead of failing entirely
-            }
-        }
-        
-        return { pngDir, pngPaths };
-    }
-
-    /**
-     * Generate FFmpeg filter for metadata overlay using concat demuxer (STABLE & FAST)
-     */
-    async generateOverlayFilter(allMetadata, clipSegments, pngPaths, workDir, videoInputCount = 1) {
-        const pathSeparator = workDir.includes('\\') ? '\\' : '/';
-        const concatFilePath = `${workDir}${pathSeparator}metadata_concat.txt`;
-        const tauri = window.__TAURI__;
-        
-        // Build timeline of metadata changes
-        const timeline = [];
-        let accumulatedTime = 0;
-        let totalVideoDuration = 0;
-        
-        for (let segIdx = 0; segIdx < clipSegments.length; segIdx++) {
-            const clipSeg = clipSegments[segIdx];
-            const clipStart = clipSeg.clipStart || 0;
-            const clipEnd = clipSeg.clipEnd || (clipSeg.clipDuration || 60);
-            totalVideoDuration += (clipEnd - clipStart);
-        }
-
-        // Create a transparent PNG for empty gaps (same size as metadata overlay)
-        const transparentPngPath = `${workDir}${pathSeparator}empty_transparent.png`;
-        const transCanvas = document.createElement('canvas');
-        // Must match metadata overlay dimensions (460x65) for concat demuxer
-        transCanvas.width = 460;
-        transCanvas.height = 65;
-        const transBlob = await new Promise(r => transCanvas.toBlob(r, 'image/png'));
-        await tauri.fs.writeFile(transparentPngPath, new Uint8Array(await transBlob.arrayBuffer()));
-
-        // Debug: log pngPaths content
-        console.log(`[Metadata Overlay] pngPaths size: ${pngPaths.size}`);
-        const pngPathKeys = Array.from(pngPaths.keys()).slice(0, 10);
-        console.log(`[Metadata Overlay] First 10 pngPath keys:`, pngPathKeys);
-
-        accumulatedTime = 0;
-        let lastEndTime = 0;
-        let concatLines = [];
-        const safeTransPath = transparentPngPath.replace(/\\/g, '/').replace(/'/g, "'\\''");
-
-        for (let segIdx = 0; segIdx < clipSegments.length; segIdx++) {
-            const clipSeg = clipSegments[segIdx];
-            const segmentMetadata = allMetadata.find(m => m.segmentIndex === segIdx);
-            const clipStart = clipSeg.clipStart || 0;
-            const clipEnd = clipSeg.clipEnd || (clipSeg.clipDuration || 60);
-            const segmentDuration = clipEnd - clipStart;
-            
-            console.log(`[Metadata Overlay] Segment ${segIdx}: clipStart=${clipStart}, clipEnd=${clipEnd}, duration=${segmentDuration}`);
-            console.log(`[Metadata Overlay] Segment ${segIdx}: hasMetadata=${!!segmentMetadata}, metadataCount=${segmentMetadata?.metadata?.length || 0}`);
-            
-            if (segmentMetadata && segmentMetadata.metadata && segmentMetadata.metadata.length > 0) {
-                const metadata = segmentMetadata.metadata;
-                console.log(`[Metadata Overlay] Segment ${segIdx}: metadata time range: ${metadata[0]?.time} to ${metadata[metadata.length-1]?.time}`);
-                
-                // Fixed 0.5 second update interval
-                const updateInterval = 0.5;
-                const numIntervals = Math.ceil(segmentDuration / updateInterval);
-                console.log(`[Metadata Overlay] Segment ${segIdx}: numIntervals=${numIntervals}`);
-                
-                // Track last valid metadata for fallback when no match found
-                let lastValidItem = metadata.find(m => m && m.data) || null;
-                let matchCount = 0;
-                
-                // Debug: log some metadata samples to verify data variety
-                const sampleIndices = [0, Math.floor(metadata.length/4), Math.floor(metadata.length/2), Math.floor(metadata.length*3/4), metadata.length-1];
-                console.log(`[Metadata Overlay] Sample metadata items:`);
-                for (const idx of sampleIndices) {
-                    const item = metadata[idx];
-                    if (item && item.data) {
-                        const key = this.getMetadataStateKey(item.data);
-                        console.log(`  [${idx}] time=${item.time?.toFixed(2)}, speed=${(item.data.vehicleSpeedMps*3.6).toFixed(1)}km/h, gear=${item.data.gearState}, key=${key}`);
-                    }
-                }
-                
-                for (let i = 0; i < numIntervals; i++) {
-                    const intervalStart = clipStart + i * updateInterval;
-                    const intervalEnd = Math.min(clipStart + (i + 1) * updateInterval, clipEnd);
-                    const intervalDuration = intervalEnd - intervalStart;
-                    
-                    if (intervalDuration <= 0) continue;
-                    
-                    // Find the best metadata item for this interval
-                    // Priority: latest item <= intervalStart, then closest, then last valid
-                    let bestItem = null;
-                    let closestItem = null;
-                    let closestDist = Infinity;
-                    for (const item of metadata) {
-                        if (!item || !item.data) continue;
-                        const dist = Math.abs(item.time - intervalStart);
-                        if (dist < closestDist) {
-                            closestDist = dist;
-                            closestItem = item;
-                        }
-                        if (item.time <= intervalStart && (!bestItem || item.time > bestItem.time)) {
-                            bestItem = item;
-                        }
-                    }
-                    
-                    const selectedItem = bestItem || closestItem || lastValidItem;
-                    if (!selectedItem || !selectedItem.data) continue;
-                    lastValidItem = selectedItem;
-                    matchCount++;
-                    
-                    const relativeStart = accumulatedTime + (intervalStart - clipStart);
-                    
-                    // Fill gap before this interval if exists
-                    if (relativeStart > lastEndTime + 0.001) {
-                        concatLines.push(`file '${safeTransPath}'`);
-                        concatLines.push(`duration ${(relativeStart - lastEndTime).toFixed(4)}`);
-                    }
-
-                    const key = this.getMetadataStateKey(selectedItem.data);
-                    const pngPath = pngPaths.get(key);
-                    
-                    // Debug: log first 5, last 5, and any key changes
-                    const isFirst5 = i < 5;
-                    const isLast5 = i >= numIntervals - 5;
-                    const prevKey = i > 0 ? this._lastLoggedKey : null;
-                    const keyChanged = prevKey && key !== prevKey;
-                    this._lastLoggedKey = key;
-                    
-                    if (isFirst5 || isLast5 || keyChanged) {
-                        console.log(`[Metadata Overlay] Interval ${i}: time=${intervalStart.toFixed(2)}, selectedTime=${selectedItem.time?.toFixed(2)}, key=${key}, pngPath=${pngPath ? 'found' : 'NOT FOUND'}`);
-                    }
-                    
-                    if (pngPath) {
-                        // FFmpeg concat demuxer needs forward slashes even on Windows
-                        const safePath = pngPath.replace(/\\/g, '/').replace(/'/g, "'\\''");
-                        concatLines.push(`file '${safePath}'`);
-                        concatLines.push(`duration ${intervalDuration.toFixed(4)}`);
-                        lastEndTime = relativeStart + intervalDuration;
-                    } else {
-                        // PNG not found for this key, use transparent placeholder but still advance time
-                        console.log(`[Metadata Overlay] PNG not found for key: ${key}, using transparent`);
-                        concatLines.push(`file '${safeTransPath}'`);
-                        concatLines.push(`duration ${intervalDuration.toFixed(4)}`);
-                        lastEndTime = relativeStart + intervalDuration;
-                    }
-                }
-                console.log(`[Metadata Overlay] Segment ${segIdx}: matched ${matchCount} intervals`);
-            }
-            // Use actual clipped duration, not full segment duration
-            accumulatedTime += segmentDuration;
-        }
-
-        console.log(`[Metadata Overlay] Generated ${concatLines.length / 2} entries, lastEndTime: ${lastEndTime}, totalDuration: ${totalVideoDuration}`);
-        console.log(`[Metadata Overlay] Concat file content (first 10 lines):`, concatLines.slice(0, 20).join('\n'));
-        console.log(`[Metadata Overlay] Concat file content (last 10 lines):`, concatLines.slice(-20).join('\n'));
-
-        // FFmpeg concat demuxer requires entries to cover the full duration
-        if (lastEndTime < totalVideoDuration) {
-            const remaining = totalVideoDuration - lastEndTime;
-            if (remaining > 0.001) {
-                console.log(`[Metadata Overlay] Filling remaining time: ${remaining.toFixed(4)}s`);
-                concatLines.push(`file '${safeTransPath}'`);
-                concatLines.push(`duration ${remaining.toFixed(4)}`);
-            }
-        }
-        
-        // Final line for concat demuxer bug - needs one last file entry without duration
-        // for images to ensure the last duration is respected
-        if (concatLines.length > 0) {
-            concatLines.push(`file '${safeTransPath}'`);
-        }
-
-        await tauri.fs.writeFile(concatFilePath, new TextEncoder().encode(concatLines.join('\n')));
-
-        // FFmpeg position (center bottom 97%)
-        const xExpr = '(W-w)/2';
-        const yExpr = '(H*0.97-h/2)';
-
-        // Return the concat input and a SIMPLE overlay filter
-        return {
-            concatFile: concatFilePath,
-            filter: `overlay=x=${xExpr}:y=${yExpr}`,
-            inputIdx: videoInputCount // This will be the next input index
-        };
-    }
 }
 
 // ============================================================
@@ -1794,10 +1439,9 @@ class MetadataManager {
             let buffer;
             if (file instanceof File) {
                 buffer = await file.arrayBuffer();
-            } else if (file instanceof TauriFile) {
+            } else if (file && typeof file.arrayBuffer === 'function') {
                 buffer = await file.arrayBuffer();
             } else if (file && file.path) {
-                // If it's a file-like object but not instance of File/TauriFile
                 const response = await fetch(getFileUrl(file));
                 buffer = await response.arrayBuffer();
             } else {
@@ -4328,12 +3972,7 @@ class VideoClipProcessor {
                     if (!file) continue;
                     
                     const filename = `s${i}_${cam}.mp4`;
-                    let data;
-                    if (file.path && window.__TAURI__) {
-                         data = await window.__TAURI__.fs.readFile(file.path);
-                    } else {
-                         data = await this.fetchFileAsUint8Array(file);
-                    }
+                    const data = await this.fetchFileAsUint8Array(file);
                     
                     await ffmpeg.writeFile(filename, data);
                     segmentFiles.push(filename);
@@ -4559,255 +4198,14 @@ class VideoClipProcessor {
         this.canvas.height = height;
     }
     
-    async checkFFmpeg() {
-        const tauri = window.__TAURI__;
-        if (!tauri || !tauri.shell) {
-            console.warn('[FFmpeg] Tauri shell not available');
-            return false;
-        }
-        try {
-            console.log('[FFmpeg] Checking bundled FFmpeg availability...');
-            // Try bundled FFmpeg first (sidecar)
-            try {
-                const sidecarCommand = tauri.shell.Command.sidecar('binaries/ffmpeg', ['-version']);
-                const sidecarOutput = await sidecarCommand.execute();
-                if (sidecarOutput.code === 0) {
-                    console.log('[FFmpeg] Bundled FFmpeg available');
-                    this.ffmpegCommand = 'sidecar';
-                    return true;
-                }
-            } catch (e) {
-                console.log('[FFmpeg] Bundled FFmpeg not available, trying system FFmpeg...');
-            }
-            
-            // Fallback to system FFmpeg
-            const command = tauri.shell.Command.create('ffmpeg', ['-version']);
-            const output = await command.execute();
-            console.log('[FFmpeg] System FFmpeg check result:', output);
-            if (output.code === 0) {
-                this.ffmpegCommand = 'system';
-                return true;
-            }
-            return false;
-        } catch (e) {
-            console.warn('[FFmpeg] Check failed:', e);
-            return false;
-        }
-    }
     
-    createFFmpegCommand(args) {
-        const tauri = window.__TAURI__;
-        if (this.ffmpegCommand === 'sidecar') {
-            return tauri.shell.Command.sidecar('binaries/ffmpeg', args);
-        }
-        return tauri.shell.Command.create('ffmpeg', args);
-    }
-
-    /**
-     * Execute FFmpeg command with real-time progress updates
-     */
-    async executeFFmpegWithProgress(args, totalDuration, progressCallback, progressPrefix) {
-        if (!progressPrefix) {
-            progressPrefix = 'Encoding...';
-        }
-        const tauri = window.__TAURI__;
-        const command = this.createFFmpegCommand(args);
-        
-        return new Promise((resolve, reject) => {
-            let stderr = '';
-            let resolved = false;
-            let lastProgressTime = Date.now();
-            let progressCheckInterval = null;
-            let childProcess = null;
-            
-            const cleanup = () => {
-                if (progressCheckInterval) {
-                    clearInterval(progressCheckInterval);
-                    progressCheckInterval = null;
-                }
-            };
-            
-            const onFinished = data => {
-                if (resolved) return;
-                resolved = true;
-                cleanup();
-                
-                console.log('[FFmpeg] Process finished/terminated:', data);
-                const code = typeof data === 'number' ? data : (data && typeof data.code === 'number' ? data.code : 0);
-                
-                if (code === 0) {
-                    resolve({ code: 0, stderr });
-                } else {
-                    const lastError = stderr.split('\n').filter(l => l.includes('Error') || l.includes('error')).pop() || 'Unknown error';
-                    reject(new Error(`FFmpeg error (code ${code}): ${lastError}`));
-                }
-            };
-
-            command.on('close', onFinished);
-            command.on('terminated', onFinished);
-            
-            command.on('error', error => {
-                if (resolved) return;
-                resolved = true;
-                cleanup();
-                console.error('[FFmpeg] Process error:', error);
-                reject(error);
-            });
-            
-            command.on('stdout', line => {
-                // Consume stdout to prevent buffer fill
-                lastProgressTime = Date.now();
-                if (line && line.includes('progress=end')) {
-                    console.log('[FFmpeg] Progress end detected in stdout');
-                }
-            });
-            
-            command.on('stderr', line => {
-                // line is usually a string in Tauri v2 shell plugin
-                stderr += line + '\n';
-                lastProgressTime = Date.now();
-                
-                // Detailed logging for debugging
-                if (line.includes('Error') || line.includes('error')) {
-                    console.error('[FFmpeg stderr]', line);
-                }
-                
-                // Keep stderr buffer manageable
-                if (stderr.length > 20000) {
-                    stderr = stderr.substring(stderr.length - 10000);
-                }
-                
-                // Parse FFmpeg progress: time=00:00:05.12 or time=00:00:05.123
-                const timeMatch = line.match(/time=(\d{2}):(\d{2}):(\d{2})\.(\d+)/);
-                if (timeMatch && totalDuration > 0) {
-                    const hours = parseInt(timeMatch[1], 10);
-                    const minutes = parseInt(timeMatch[2], 10);
-                    const seconds = parseInt(timeMatch[3], 10);
-                    const msStr = timeMatch[4];
-                    // Handle different millisecond lengths (.1, .12, .123)
-                    const ms = parseFloat("0." + msStr);
-                    const currentTime = hours * 3600 + minutes * 60 + seconds + ms;
-                    
-                    const progress = Math.min(99, Math.round((currentTime / totalDuration) * 100));
-                    progressCallback?.(`${progressPrefix} ${progress}%`);
-                    
-                    // Check if we've reached near the end
-                    if (currentTime >= totalDuration - 0.5) {
-                        console.log('[FFmpeg] Reached end of expected duration, waiting for process to finish...');
-                    }
-                }
-            });
-            
-            console.log('[FFmpeg] Spawning process with args:', args.slice(0, 10).join(' '), '...');
-            command.spawn().then(child => {
-                childProcess = child;
-                this.ffmpegChild = child;
-                console.log('[FFmpeg] Process spawned successfully, PID:', child.pid);
-                
-                // Set up a watchdog to detect if FFmpeg has stalled
-                // Check every 30 seconds if we've received any output
-                progressCheckInterval = setInterval(() => {
-                    const timeSinceLastProgress = Date.now() - lastProgressTime;
-                    console.log(`[FFmpeg Watchdog] Time since last output: ${Math.round(timeSinceLastProgress / 1000)}s`);
-                    
-                    // If no output for 2 minutes, something is wrong
-                    if (timeSinceLastProgress > 120000 && !resolved) {
-                        console.warn('[FFmpeg Watchdog] No output for 2 minutes, process may be stuck');
-                        console.warn('[FFmpeg Watchdog] Last stderr:', stderr.slice(-500));
-                    }
-                }, 30000);
-            }).catch(err => {
-                cleanup();
-                console.error('[FFmpeg] Failed to spawn process:', err);
-                reject(err);
-            });
-        });
-    }
-
-    async processWithFFmpeg(clipSegments, camera, progressCallback) {
-        const tauri = window.__TAURI__;
-        const fs = tauri.fs;
-        const shell = tauri.shell;
-        
-        // Use the directory of the first file for output, temp dir for intermediate files
-        const firstFile = clipSegments[0].segment.files[camera];
-        if (!firstFile || !firstFile.path) throw new Error('File path not found');
-        
-        // Get directory path (handle both forward and back slashes)
-        const pathSeparator = firstFile.path.includes('\\') ? '\\' : '/';
-        const lastSepIdx = firstFile.path.lastIndexOf(pathSeparator);
-        const outputDir = lastSepIdx !== -1 ? firstFile.path.substring(0, lastSepIdx) : '.';
-        
-        // Use system temp directory for intermediate files
-        let workDir = await getTempDir();
-        const workSeparator = workDir.includes('\\') ? '\\' : '/';
-        
-        const timestamp = new Date().getTime();
-        const listFilename = `ffmpeg_list_${camera}_${timestamp}.txt`;
-        const outputFilename = `export_${camera}_${timestamp}.mp4`;
-        
-        const listPath = `${workDir}${workSeparator}${listFilename}`;
-        const outputPath = `${outputDir}${pathSeparator}${outputFilename}`;
-        
-        // Generate list content
-        let listContent = '';
-        for (const seg of clipSegments) {
-            const file = seg.segment.files[camera];
-            if (!file || !file.path) continue;
-            
-            // For ffmpeg concat, paths should be escaped
-            // FFmpeg concat demuxer needs forward slashes even on Windows
-            const safePath = file.path.replace(/\\/g, '/').replace(/'/g, "'\\''");
-            listContent += `file '${safePath}'\n`;
-            listContent += `inpoint ${seg.clipStart}\n`;
-            listContent += `outpoint ${seg.clipEnd}\n`;
-        }
-        
-        try {
-            // Write list file
-            await fs.writeTextFile(listPath, listContent);
-            
-            // ffmpeg args
-            const args = [
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', listPath,
-                '-c', 'copy',
-                '-y',
-                outputPath
-            ];
-            
-            console.log('Running ffmpeg:', args);
-            progressCallback?.(`FFmpeg Fast Exporting...`);
-            
-            const totalDuration = clipSegments.reduce((sum, seg) => {
-                const dur = (seg.clipEnd || 60) - (seg.clipStart || 0);
-                return sum + (dur > 0 ? dur : 0);
-            }, 0);
-            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, 'Fast Exporting...');
-            
-            // Read result
-            const binary = await fs.readFile(outputPath);
-            const blob = new Blob([binary], { type: 'video/mp4' });
-            
-            // Cleanup
-            await fs.remove(listPath);
-            await fs.remove(outputPath);
-            
-            return blob;
-            
-        } catch (e) {
-            // Cleanup on error
-            try { await fs.remove(listPath); } catch(_) {}
-            try { await fs.remove(outputPath); } catch(_) {}
-            throw e;
-        }
-    }
 
 
 
 
-    async processClip(segments, cameras, startTime, endTime, addTimestamp, addMetadata, mergeGrid, eventStartTime, progressCallback, useLocalFFmpeg = false, language = 'en', fileHandle = null, metadataManager = null) {
+
+
+    async processClip(segments, cameras, startTime, endTime, addTimestamp, addMetadata, mergeGrid, eventStartTime, progressCallback, language = 'en', fileHandle = null, metadataManager = null) {
         try {
             // Reset cancellation state
             this.isCancelled = false;
@@ -4821,70 +4219,8 @@ class VideoClipProcessor {
                 throw new Error('No valid video segments found');
             }
 
-            // 1. Use local FFmpeg if requested (Tauri desktop only)
-            if (useLocalFFmpeg && window.__TAURI__) {
-                const hasFFmpeg = await this.checkFFmpeg();
-                if (!hasFFmpeg) {
-                    throw new Error('FFmpeg not found. Install FFmpeg and make sure it is in your system PATH');
-                }
-                
-                console.log('[VideoClipProcessor] Using local FFmpeg for export');
-                
-                if (mergeGrid && cameras.length > 1) {
-                    // FFmpeg grid merge with optional timestamp and metadata
-                    progressCallback?.('FFmpeg Merging Grid Video...');
-                    const result = await this.processWithFFmpegGrid(clipSegments, cameras, addTimestamp, addMetadata, eventStartTime, progressCallback);
-                    return [result];
-                } else {
-                    // FFmpeg single camera export
-                    const results = [];
-                    for (const camera of cameras) {
-                        if (this.isCancelled) throw new Error('Export Cancelled');
-                        progressCallback?.(`FFmpeg Fast Exporting ${camera}...`);
-                        const result = await this.processWithFFmpegFull(clipSegments, camera, addTimestamp, addMetadata, eventStartTime, progressCallback);
-                        results.push(result);
-                    }
-                    return results;
-                }
-            }
-
-            // 2. Fallback: Try native FFmpeg for fast copy (no timestamp, no grid, no metadata) - Tauri only
-            const hasFFmpeg = await this.checkFFmpeg();
-            if (hasFFmpeg && !addTimestamp && !addMetadata && !mergeGrid) {
-                 const results = [];
-                 for (const camera of cameras) {
-                     progressCallback?.(`Fast exporting ${camera}...`);
-                     const blob = await this.processWithFFmpeg(clipSegments, camera, progressCallback);
-                     results.push({ camera, blob });
-                 }
-                 return results;
-            }
-            
-            // 3. Web FFmpeg (WASM) for Grid or Timestamp in Browser
-            // If we have fileHandle (streaming mode), force use Web FFmpeg logic even if cameras.length=1
-            // But currently processWithFFmpegWasm is only called if we implement it here.
-            // Wait, previous logic called createGridVideoFromSegments or processVideoWithTimestamp (Canvas).
-            // We want to replace Canvas with FFmpegWASM for better quality if possible, OR just optimize processWithFFmpegWasm
-            
-            // Previously, there was NO call to processWithFFmpegWasm in processClip in the provided snippet!
-            // Wait, let's check the original code again.
-            // Ah, the original code used Canvas (createGridVideoFromSegments / processVideoWithTimestamp).
-            // But I modified processWithFFmpegWasm earlier. Where is it called?
-            // It seems processWithFFmpegWasm was added but maybe not hooked up in processClip in the original code, 
-            // OR I missed where it was called.
-            
-            // Let's hook it up. If fileHandle is provided, OR if we want to use WASM instead of Canvas.
-            // Using WASM is generally better quality than Canvas recording but slower.
-            // If the user is on Web, we prefer WASM for Grid/Timestamp to avoid re-encoding loss of Canvas recording (which is real-time-ish).
-            
-            // However, to be safe and stick to the "fix memory" goal:
-            // If fileHandle is present, we MUST use processWithFFmpegWasm because Canvas recording doesn't support stream writing easily (MediaRecorder returns chunks, we could write chunks...).
-            // Actually MediaRecorder chunks CAN be written to fileHandle!
-            // But processWithFFmpegWasm was the one I optimized.
-            
-            // Let's use processWithFFmpegWasm if fileHandle is present OR if we want higher quality.
-            // For now, let's only enable it if fileHandle is present to test the fix.
-            
+            // Everything runs in the browser: canvas capture when the result can
+            // be streamed straight to a file handle, ffmpeg.wasm otherwise.
             if (fileHandle) {
                  progressCallback?.('Using streaming export mode (Canvas)...');
                  
@@ -4975,613 +4311,7 @@ class VideoClipProcessor {
         }
     }
     
-    // FFmpeg full export with optional timestamp and metadata (single camera)
-    async processWithFFmpegFull(clipSegments, camera, addTimestamp, addMetadata, eventStartTime, progressCallback) {
-        const tauri = window.__TAURI__;
-        const fs = tauri.fs;
-        const shell = tauri.shell;
-        
-        const firstFile = clipSegments[0].segment.files[camera];
-        if (!firstFile || !firstFile.path) throw new Error(`File path not found for the ${camera} camera`);
-        
-        const pathSeparator = firstFile.path.includes('\\') ? '\\' : '/';
-        const lastSepIdx = firstFile.path.lastIndexOf(pathSeparator);
-        const outputDir = lastSepIdx !== -1 ? firstFile.path.substring(0, lastSepIdx) : '.';
-        
-        // Use system temp directory for intermediate files
-        let workDir = await getTempDir();
-        const workSeparator = workDir.includes('\\') ? '\\' : '/';
-        
-        const timestamp = new Date().getTime();
-        const listFilename = `ffmpeg_list_${camera}_${timestamp}.txt`;
-        const outputFilename = `TeslaCam_${camera}_${timestamp}.mp4`;
-        
-        const listPath = `${workDir}${workSeparator}${listFilename}`;
-        const outputPath = `${outputDir}${pathSeparator}${outputFilename}`;
-        
-        // Track temp files for cleanup
-        const tempFiles = [listPath];
-        
-        // Generate concat list
-        let listContent = '';
-        for (const seg of clipSegments) {
-            const file = seg.segment.files[camera];
-            if (!file || !file.path) continue;
-            const safePath = file.path.replace(/\\/g, '/').replace(/'/g, "'\\''");
-            listContent += `file '${safePath}'\n`;
-            listContent += `inpoint ${seg.clipStart}\n`;
-            listContent += `outpoint ${seg.clipEnd}\n`;
-        }
-        
-        try {
-            await fs.writeTextFile(listPath, listContent);
-            
-            // Calculate total duration early for trim filters
-            const totalDuration = clipSegments.reduce((sum, seg) => {
-                const dur = (seg.clipEnd || 60) - (seg.clipStart || 0);
-                return sum + (dur > 0 ? dur : 0);
-            }, 0);
-            
-            // Generate PNG overlay for metadata if enabled
-            let allMetadata = null;
-            let overlayInfo = null;
-            
-            if (addMetadata && this.metadataManager) {
-                progressCallback?.(`Loading ${camera} metadata...`);
-                allMetadata = await this.loadMetadataForSegments(clipSegments, camera, progressCallback);
-                
-                if (allMetadata && allMetadata.length > 0) {
-                    // Tesla cameras are typically 1280x960
-                    const videoWidth = 1280;
-                    const videoHeight = 960;
-                    
-                    progressCallback?.(`Generating metadata overlays...`);
-                    try {
-                        overlayInfo = await metadataOverlayGenerator.generateOverlayPngs(
-                            allMetadata,
-                            clipSegments,
-                            workDir,
-                            videoWidth,
-                            videoHeight,
-                            progressCallback,
-                            this.currentLanguage
-                        );
-                        if (overlayInfo) {
-                            tempFiles.push(overlayInfo.pngDir);
-                            console.log('[FFmpeg] PNG overlays generated:', overlayInfo.pngDir);
-                        }
-                    } catch (pngError) {
-                        console.error('[FFmpeg] PNG overlay generation failed:', pngError);
-                        overlayInfo = null;
-                    }
-                }
-            }
-            
-            // Build filter chain
-            let filterComplex = '';
-            let inputArgs = ['-fflags', '+genpts', '-f', 'concat', '-safe', '0', '-i', listPath];
-            
-            console.log(`[FFmpeg] Exporting ${camera}, calculated duration: ${totalDuration}s`);
-
-            let currentLabel = '[0:v]';
-            
-            // Normalize video stream if we are re-encoding (timestamp or metadata enabled)
-            // This is CRITICAL to fix duration shortening issues caused by PTS gaps in concat demuxer
-            if (addTimestamp || addMetadata) {
-                // Use fps filter to fill gaps, setpts to ensure continuous timeline from 0
-                // and trim to force the expected duration.
-                filterComplex = `${currentLabel}fps=fps=30,setpts=PTS-STARTPTS,trim=duration=${totalDuration}[v_sync]`;
-                currentLabel = '[v_sync]';
-            }
-            
-            // Add timestamp filter if enabled
-            if (addTimestamp) {
-                const firstFileRef = clipSegments[0].segment.files[camera];
-                const fileName = firstFileRef.name || firstFileRef.path.split(/[/\\]/).pop();
-                const fullTimestampMatch = fileName.match(/(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})/);
-                
-                let firstSegTime;
-                if (fullTimestampMatch) {
-                    firstSegTime = this.parseTimestamp(fullTimestampMatch[1]);
-                } else {
-                    firstSegTime = this.parseTimestamp(clipSegments[0].timestamp);
-                }
-                
-                const clipStartTimeObj = new Date(firstSegTime.getTime() + clipSegments[0].clipStart * 1000);
-                const startEpoch = Math.floor(clipStartTimeObj.getTime() / 1000);
-                
-                let fontOption = "";
-                if (navigator.userAgent.includes('Windows')) {
-                    fontOption = "fontfile='C\\:/Windows/Fonts/msyh.ttc':";
-                } else if (navigator.userAgent.includes('Mac')) {
-                    // Escape spaces for FFmpeg filter
-                    fontOption = "fontfile='/System/Library/Fonts/Hiragino\\ Sans\\ GB.ttc':";
-                }
-
-                // FFmpeg pts:localtime only accepts 2 arguments (localtime and epoch timestamp)
-                const drawtext = `drawtext=${fontOption}text='%{pts\\:localtime\\:${startEpoch}}':x=w-text_w-20:y=20:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.5`;
-                filterComplex += (filterComplex ? ';' : '') + `${currentLabel}${drawtext}[ts]`;
-                currentLabel = '[ts]';
-            }
-            
-            // Add PNG overlay filters for metadata
-            if (addMetadata && overlayInfo && overlayInfo.pngPaths && overlayInfo.pngPaths.size > 0) {
-                const overlayResult = await metadataOverlayGenerator.generateOverlayFilter(
-                    allMetadata,
-                    clipSegments,
-                    overlayInfo.pngPaths,
-                    workDir,
-                    1 // Video is input 0
-                );
-                
-                if (overlayResult.concatFile) {
-                    // Add background and concat stream to inputs
-                    const bgPath = overlayInfo.pngPaths.get('__background__');
-                    // Use -loop 1 for background image
-                    inputArgs.push('-loop', '1', '-i', bgPath);
-                    const bgIdx = 1; // Video is 0, background is 1
-
-                    inputArgs.push('-f', 'concat', '-safe', '0', '-i', overlayResult.concatFile);
-                    const metaIdx = 2; // Concat stream is 2
-
-                    tempFiles.push(overlayResult.concatFile);
-
-                    // Overlay background then metadata stream
-                    const xExpr = '(W-w)/2';
-                    const yExpr = '(H*0.97-h/2)';
-                    
-                    // Background and metadata streams also need synchronization
-                    const bgTrim = `[${bgIdx}:v]trim=duration=${totalDuration},setpts=PTS-STARTPTS[bg_trimmed]`;
-                    const metaSync = `[${metaIdx}:v]setpts=PTS-STARTPTS[meta_sync]`;
-                    
-                    // Apply overlays using synchronized streams
-                    const ovPart = `${bgTrim};${metaSync};${currentLabel}[bg_trimmed]overlay=x=${xExpr}:y=${yExpr}:eof_action=pass[bg_v];[bg_v][meta_sync]overlay=x=${xExpr}:y=${yExpr}:eof_action=pass[ov]`;
-                    
-                    filterComplex += (filterComplex ? ';' : '') + ovPart;
-                    currentLabel = '[ov]';
-                }
-            }
-            
-            let args;
-            if (filterComplex) {
-                // With filters: need re-encode
-                // Use filter_complex_script to avoid command line length limits on Windows
-                const filterScriptPath = `${workDir}${pathSeparator}ffmpeg_filter_${timestamp}.txt`;
-                console.log('[FFmpeg] Filter complex content:', filterComplex);
-                console.log('[FFmpeg] Current label for -map:', currentLabel);
-                await fs.writeTextFile(filterScriptPath, filterComplex);
-                tempFiles.push(filterScriptPath);
-
-                args = [
-                    ...inputArgs,
-                    '-filter_complex_script', filterScriptPath,
-                    '-map', currentLabel,
-                    '-map', '0:a?',
-                    '-c:v', 'libx264',
-                    '-preset', 'fast',
-                    '-crf', '23',
-                    '-c:a', 'aac',
-                    '-t', String(Math.ceil(totalDuration + 0.5)),
-                    '-y',
-                    outputPath
-                ];
-            } else {
-                // Without filters: fast copy
-                args = [
-                    '-f', 'concat',
-                    '-safe', '0',
-                    '-i', listPath,
-                    '-c', 'copy',
-                    '-y',
-                    outputPath
-                ];
-            }
-            
-            console.log('[FFmpeg] Running:', args.join(' '));
-            progressCallback?.(`FFmpeg Processing ${camera}...`);
-            
-            // totalDuration already calculated at line 4166
-            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, `Processing ${camera}...`);
-            progressCallback?.(`Processing ${camera}: 100%`);
-            
-            console.log('[FFmpeg] Finished processing camera:', camera);
-            
-            if (output.code !== 0) {
-                throw new Error(`FFmpeg error (code ${output.code}): ${output.stderr || output.stdout || 'Unknown error'}`);
-            }
-            
-            // Cleanup temp files
-            for (const f of tempFiles) {
-                try { 
-                    // Check if it's a directory (PNG overlay dir)
-                    if (f.includes('overlay_pngs_')) {
-                        await this.removeDirectory(f, fs);
-                    } else {
-                        await fs.remove(f); 
-                    }
-                } catch(_) {}
-            }
-            
-            return { camera, path: outputPath, isFile: true };
-            
-        } catch (e) {
-            // Cleanup on error
-            for (const f of tempFiles) {
-                try { 
-                    if (f.includes('overlay_pngs_')) {
-                        await this.removeDirectory(f, fs);
-                    } else {
-                        await fs.remove(f); 
-                    }
-                } catch(_) {}
-            }
-            try { await fs.remove(outputPath); } catch(_) {}
-            throw e;
-        }
-    }
     
-    // Helper to remove directory recursively
-    async removeDirectory(dirPath, fs) {
-        try {
-            const entries = await fs.readDir(dirPath);
-            for (const entry of entries) {
-                const entryPath = entry.path || `${dirPath}/${entry.name}`;
-                if (entry.children !== undefined) {
-                    await this.removeDirectory(entryPath, fs);
-                } else {
-                    await fs.remove(entryPath);
-                }
-            }
-            await fs.remove(dirPath);
-        } catch (e) {
-            console.warn('[FFmpeg] Failed to remove directory:', dirPath, e);
-        }
-    }
-    
-    // FFmpeg grid merge export with optional timestamp and metadata
-    async processWithFFmpegGrid(clipSegments, cameras, addTimestamp, addMetadata, eventStartTime, progressCallback) {
-        const tauri = window.__TAURI__;
-        const fs = tauri.fs;
-        const shell = tauri.shell;
-
-        // Sort cameras for 6-grid layout
-        let sortedCameras = [...cameras];
-        if (cameras.length > 4) {
-            const sortOrder = ['left_pillar', 'front', 'right_pillar', 'left', 'back', 'right'];
-            sortedCameras.sort((a, b) => {
-                const idxA = sortOrder.indexOf(a);
-                const idxB = sortOrder.indexOf(b);
-                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-            });
-        } else {
-             // Standard layout for <= 4 cameras
-             const sortOrder = ['front', 'back', 'left', 'right', 'left_pillar', 'right_pillar'];
-             sortedCameras.sort((a, b) => {
-                const idxA = sortOrder.indexOf(a);
-                const idxB = sortOrder.indexOf(b);
-                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-            });
-        }
-        
-        // Filter out cameras that have no files in the selected range to prevent FFmpeg hangs
-        const activeCameras = sortedCameras.filter(cam => 
-            clipSegments.some(seg => seg.segment.files[cam] && seg.segment.files[cam].path)
-        );
-        
-        if (activeCameras.length === 0) throw new Error('No video streams available to export');
-        
-        const firstFile = clipSegments.find(seg => seg.segment.files[activeCameras[0]] && seg.segment.files[activeCameras[0]].path)?.segment.files[activeCameras[0]];
-        if (!firstFile) throw new Error('File path not found');
-        
-        const pathSeparator = firstFile.path.includes('\\') ? '\\' : '/';
-        const lastSepIdx = firstFile.path.lastIndexOf(pathSeparator);
-        const outputDir = lastSepIdx !== -1 ? firstFile.path.substring(0, lastSepIdx) : '.';
-        
-        // Use system temp directory for intermediate files
-        let workDir = await getTempDir();
-        const workSeparator = workDir.includes('\\') ? '\\' : '/';
-        
-        const timestamp = new Date().getTime();
-        const outputFilename = `TeslaCam_grid_${timestamp}.mp4`;
-        const outputPath = `${outputDir}${pathSeparator}${outputFilename}`;
-        
-        // Create temp concat files for each camera
-        const tempFiles = [];
-        const inputArgs = [];
-        
-        try {
-            // Build concat files for each camera and track which ones have content
-            const validCameras = [];
-            for (const camera of activeCameras) {
-                const listFilename = `ffmpeg_list_${camera}_${timestamp}.txt`;
-                const listPath = `${workDir}${workSeparator}${listFilename}`;
-                tempFiles.push(listPath);
-                
-                let listContent = '';
-                for (const seg of clipSegments) {
-                    const file = seg.segment.files[camera];
-                    if (!file || !file.path) continue;
-                    const safePath = file.path.replace(/\\/g, '/').replace(/'/g, "'\\''");
-                    listContent += `file '${safePath}'\n`;
-                    listContent += `inpoint ${seg.clipStart}\n`;
-                    listContent += `outpoint ${seg.clipEnd}\n`;
-                }
-                
-                // Only add cameras that have actual video files
-                if (listContent.trim()) {
-                    await fs.writeTextFile(listPath, listContent);
-                    inputArgs.push('-f', 'concat', '-safe', '0', '-i', listPath);
-                    validCameras.push(camera);
-                } else {
-                    console.warn(`[FFmpeg Grid] Camera ${camera} has no files in selected range, skipping`);
-                }
-            }
-            
-            // Update activeCameras to only include cameras with valid files
-            if (validCameras.length === 0) {
-                throw new Error('No video files available to export');
-            }
-            if (validCameras.length !== activeCameras.length) {
-                console.log(`[FFmpeg Grid] Reduced cameras from ${activeCameras.length} to ${validCameras.length}`);
-            }
-            // Replace activeCameras with validCameras for the rest of processing
-            const originalActiveCameras = activeCameras;
-            activeCameras.length = 0;
-            activeCameras.push(...validCameras);
-            
-            // Generate ASS subtitle for metadata if enabled
-            let allMetadata = null;
-            let overlayInfo = null;
-            
-            // Calculate grid dimensions
-            const count = activeCameras.length;
-            let gridWidth, gridHeight;
-            if (count <= 2) {
-                gridWidth = 1920;
-                gridHeight = 540;
-            } else if (count <= 4) {
-                gridWidth = 1920;
-                gridHeight = 1080;
-            } else {
-                gridWidth = 2880;
-                gridHeight = 1080;
-            }
-            
-            if (addMetadata && this.metadataManager) {
-                progressCallback?.('Loading metadata...');
-                // Use first camera for metadata (front camera preferred)
-                const metadataCamera = activeCameras.includes('front') ? 'front' : activeCameras[0];
-                allMetadata = await this.loadMetadataForSegments(clipSegments, metadataCamera, progressCallback);
-                
-                if (allMetadata && allMetadata.length > 0) {
-                    progressCallback?.(`Generating metadata overlays...`);
-                    try {
-                        overlayInfo = await metadataOverlayGenerator.generateOverlayPngs(
-                            allMetadata,
-                            clipSegments,
-                            workDir,
-                            gridWidth,
-                            gridHeight,
-                            progressCallback,
-                            this.currentLanguage
-                        );
-                        if (overlayInfo) {
-                            tempFiles.push(overlayInfo.pngDir);
-                            console.log('[FFmpeg Grid] PNG overlays generated:', overlayInfo.pngDir);
-                        }
-                    } catch (pngError) {
-                        console.error('[FFmpeg Grid] PNG overlay generation failed:', pngError);
-                        overlayInfo = null;
-                    }
-                }
-            }
-            
-            // Calculate total duration EARLY - needed for trim filter to prevent FFmpeg hanging
-            const totalDuration = clipSegments.reduce((sum, seg) => {
-                const dur = (seg.clipEnd || 60) - (seg.clipStart || 0);
-                return sum + (dur > 0 ? dur : 0);
-            }, 0);
-            
-            console.log('[FFmpeg Grid] Total duration calculated:', totalDuration, 'seconds');
-            
-            // Build filter for grid layout
-            let filterComplex = '';
-            
-            // Camera names for localization
-            const lang = this.currentLanguage || 'en';
-
-            // Scale each input and add label
-            for (let i = 0; i < count; i++) {
-                const camName = activeCameras[i];
-                const labelText = cameraLabel(camName, lang) || camName.toUpperCase();
-                
-                // Determine font file path based on OS for labels (use CJK-compatible font)
-                let fontOption = "";
-                if (navigator.userAgent.includes('Windows')) {
-                    fontOption = "fontfile='C\\:/Windows/Fonts/msyh.ttc':";
-                } else if (navigator.userAgent.includes('Mac')) {
-                    // Escape spaces for FFmpeg filter
-                    fontOption = "fontfile='/System/Library/Fonts/Hiragino\\ Sans\\ GB.ttc':";
-                }
-
-                const drawLabel = `drawtext=${fontOption}text='${labelText}':x=10:y=10:fontsize=18:fontcolor=white:box=1:boxcolor=black@0.5`;
-                // Add trim filter to ensure all streams have the same duration, preventing FFmpeg from hanging
-                filterComplex += `[${i}:v]trim=duration=${totalDuration},setpts=PTS-STARTPTS,scale=960:540,setsar=1,fps=24,format=yuv420p,${drawLabel}[v${i}];`;
-            }
-            
-            // Stack layout - no shortest=1 needed since trim filter ensures equal duration
-            let stackFilter = '';
-            if (count === 1) {
-                stackFilter = `[v0]null[grid]`;
-            } else if (count === 2) {
-                stackFilter = `[v0][v1]hstack=inputs=2[grid]`;
-            } else if (count === 3) {
-                // Top: 2 videos (1920px), Bottom: 1 video (960px) -> Pad bottom to 1920px (center aligned)
-                stackFilter = `[v0][v1]hstack=inputs=2[top];[v2]pad=1920:540:480:0[v2_padded];[top][v2_padded]vstack=inputs=2[grid]`;
-            } else if (count === 4) {
-                stackFilter = `[v0][v1]hstack=inputs=2[top];[v2][v3]hstack=inputs=2[bottom];[top][bottom]vstack=inputs=2[grid]`;
-            } else if (count >= 5) {
-                // 3x2 grid. Top row is always 3 videos (2880px).
-                stackFilter = `[v0][v1][v2]hstack=inputs=3[top];`;
-                if (count === 5) {
-                    // Bottom: 2 videos (1920px) -> Pad to 2880px (center aligned: (2880-1920)/2 = 480)
-                    stackFilter += `[v3][v4]hstack=inputs=2,pad=2880:540:480:0[bottom];[top][bottom]vstack=inputs=2[grid]`;
-                } else {
-                    // Bottom: 3 videos (2880px)
-                    stackFilter += `[v3][v4][v5]hstack=inputs=3[bottom];[top][bottom]vstack=inputs=2[grid]`;
-                }
-            } else {
-                stackFilter = `[v0]null[grid]`;
-            }
-            
-            filterComplex += stackFilter;
-            
-            // Track current output label
-            let currentOutput = 'grid';
-            
-            // Add timestamp if needed
-            if (addTimestamp) {
-                // Extract full timestamp (with seconds) from filename
-                const firstFileRef = clipSegments.find(seg => seg.segment.files[activeCameras[0]])?.segment.files[activeCameras[0]];
-                const fileName = firstFileRef.name || firstFileRef.path.split(/[/\\]/).pop();
-                const fullTimestampMatch = fileName.match(/(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})/);
-                
-                let firstSegTime;
-                if (fullTimestampMatch) {
-                    firstSegTime = this.parseTimestamp(fullTimestampMatch[1]);
-                } else {
-                    firstSegTime = this.parseTimestamp(clipSegments[0].timestamp);
-                }
-                
-                const clipStartTimeObj = new Date(firstSegTime.getTime() + clipSegments[0].clipStart * 1000);
-                const startEpoch = Math.floor(clipStartTimeObj.getTime() / 1000);
-                
-                let fontOption = "";
-                if (navigator.userAgent.includes('Windows')) {
-                    fontOption = "fontfile='C\\:/Windows/Fonts/msyh.ttc':";
-                } else if (navigator.userAgent.includes('Mac')) {
-                    // Escape spaces for FFmpeg filter
-                    fontOption = "fontfile='/System/Library/Fonts/Hiragino\\ Sans\\ GB.ttc':";
-                }
-                
-                // FFmpeg pts:localtime only accepts 2 arguments (localtime and epoch timestamp)
-                // Time format uses system locale default
-                const drawtext = `drawtext=${fontOption}text='%{pts\\:localtime\\:${startEpoch}}':x=w-text_w-20:y=20:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.5`;
-                filterComplex += (filterComplex ? ';' : '') + `[${currentOutput}]${drawtext}[ts]`;
-                currentOutput = 'ts';
-            }
-            
-            // Add PNG overlay filters for metadata
-            if (overlayInfo && overlayInfo.pngPaths && overlayInfo.pngPaths.size > 0) {
-                const overlayResult = await metadataOverlayGenerator.generateOverlayFilter(
-                    allMetadata,
-                    clipSegments,
-                    overlayInfo.pngPaths,
-                    workDir,
-                    activeCameras.length // Multiple video inputs
-                );
-                
-                if (overlayResult.concatFile) {
-                    // Add background and concat stream to inputs
-                    const bgPath = overlayInfo.pngPaths.get('__background__');
-                    // Use -loop 1 for background image
-                    inputArgs.push('-loop', '1', '-i', bgPath);
-                    const bgIdx = activeCameras.length; // Cameras are 0 to N-1, background is N
-
-                    inputArgs.push('-f', 'concat', '-safe', '0', '-i', overlayResult.concatFile);
-                    const metaIdx = bgIdx + 1;
-
-                    tempFiles.push(overlayResult.concatFile);
-
-                    // Scale down metadata overlay for grid view to match single camera proportions
-                    // Front camera reference: 2896px width video -> 480px box width
-                    // Target grid width: 1920px -> 1920 * (480 / 2896) ≈ 318px
-                    const referenceWidth = 2896;
-                    const scaleFactor = 1920 / referenceWidth;
-                    const scaledBgWidth = Math.round(480 * scaleFactor);
-                    const scaledBgHeight = Math.round(65 * scaleFactor);
-                    
-                    // Overlay background then metadata stream with scaling
-                    const xExpr = '(W-w)/2';
-                    const yExpr = '(H*0.97-h/2)';
-                    const currentLabelStr = `[${currentOutput}]`;
-                    
-                    // Ensure all streams start at PTS 0 and are synchronized
-                    const videoStream = `${currentLabelStr}setpts=PTS-STARTPTS[v_sync]`;
-                    const bgScale = `[${bgIdx}:v]trim=duration=${totalDuration},setpts=PTS-STARTPTS,scale=${scaledBgWidth}:${scaledBgHeight}[bg_scaled]`;
-                    const metaScale = `[${metaIdx}:v]setpts=PTS-STARTPTS,scale=${scaledBgWidth}:${scaledBgHeight}[meta_scaled]`;
-                    
-                    const ovPart = `${videoStream};${bgScale};${metaScale};[v_sync][bg_scaled]overlay=x=${xExpr}:y=${yExpr}:eof_action=pass[bg_v];[bg_v][meta_scaled]overlay=x=${xExpr}:y=${yExpr}:eof_action=pass[ov]`;
-                    
-                    filterComplex += (filterComplex ? ';' : '') + ovPart;
-                    currentOutput = 'ov';
-                }
-            }
-            
-            const finalOutput = `[${currentOutput}]`;
-            
-            // Calculate total duration BEFORE building args
-            // Use filter_complex_script to avoid command line length limits on Windows
-            const filterScriptPath = `${workDir}${pathSeparator}ffmpeg_filter_grid_${timestamp}.txt`;
-            await fs.writeTextFile(filterScriptPath, filterComplex);
-            tempFiles.push(filterScriptPath);
-
-            const args = [
-                ...inputArgs,
-                '-filter_complex_script', filterScriptPath,
-                '-map', finalOutput,
-                '-map', '0:a?',
-                '-c:v', 'libx264',
-                '-preset', 'veryfast',
-                '-crf', '23',
-                '-r', '24',
-                '-t', String(Math.ceil(totalDuration + 1)),
-                '-y',
-                outputPath
-            ];
-            
-            console.log('[FFmpeg Grid] Filter script content (first 500):', filterComplex.substring(0, 500));
-            console.log('[FFmpeg Grid] Filter script content (last 500):', filterComplex.substring(filterComplex.length - 500));
-            console.log('[FFmpeg Grid] Running with', activeCameras.length, 'cameras, duration:', totalDuration);
-            console.log('[FFmpeg Grid] Args:', args.join(' '));
-            progressCallback?.('FFmpeg Merging Grid...');
-            
-            const output = await this.executeFFmpegWithProgress(args, totalDuration, progressCallback, 'Merging Grid...');
-            progressCallback?.('Merging Grid: 100%');
-            
-            console.log('[FFmpeg Grid] Finished processing grid');
-            
-            if (output.code !== 0) {
-                throw new Error(`FFmpeg error (code ${output.code}): ${output.stderr || output.stdout || 'Unknown error'}`);
-            }
-            
-            // Cleanup temp files
-            for (const f of tempFiles) {
-                try { 
-                    if (f.includes('overlay_pngs_')) {
-                        await this.removeDirectory(f, fs);
-                    } else {
-                        await fs.remove(f); 
-                    }
-                } catch(_) {}
-            }
-            
-            return { camera: 'grid', path: outputPath, isFile: true };
-            
-        } catch (e) {
-            for (const f of tempFiles) {
-                try { 
-                    if (f.includes('overlay_pngs_')) {
-                        await this.removeDirectory(f, fs);
-                    } else {
-                        await fs.remove(f); 
-                    }
-                } catch(_) {}
-            }
-            try { await fs.remove(outputPath); } catch(_) {}
-            throw e;
-        }
-    }
     
     getSegmentsForTimeRange(allSegments, startTime, endTime) {
         const result = [];
@@ -5633,8 +4363,6 @@ class VideoClipProcessor {
             await this.loadMetadataIcons();
         }
         
-        // Check if we're in Tauri environment
-        const isTauri = !!window.__TAURI__;
         
         // First pass: get video dimensions from first segment (load and release immediately)
         let canvasWidth = 0;
@@ -5782,20 +4510,7 @@ class VideoClipProcessor {
             video.muted = true;
             video.crossOrigin = 'anonymous';
             
-            // In Tauri, we need to read the file as blob to avoid CORS issues with canvas
-            if (isTauri && videoFile.path) {
-                try {
-                    const fs = window.__TAURI__.fs;
-                    const fileData = await fs.readFile(videoFile.path);
-                    const blob = new Blob([fileData], { type: 'video/mp4' });
-                    video.src = URL.createObjectURL(blob);
-                } catch (e) {
-                    console.error('Failed to read file via Tauri fs:', e);
-                    video.src = getFileUrl(videoFile);
-                }
-            } else {
-                video.src = getFileUrl(videoFile);
-            }
+            video.src = getFileUrl(videoFile);
             
             await new Promise((resolve, reject) => {
                 video.onloadedmetadata = resolve;
@@ -6056,8 +4771,6 @@ class VideoClipProcessor {
             await this.loadMetadataIcons();
         }
         
-        // Check if we're in Tauri environment
-        const isTauri = !!window.__TAURI__;
         
         // First pass: get video dimensions from first segment (load and release immediately)
         let canvasWidth = 0;
@@ -6259,19 +4972,7 @@ class VideoClipProcessor {
                 video.muted = true;
                 video.crossOrigin = 'anonymous';
                 
-                if (isTauri && videoFile.path) {
-                    try {
-                        const fs = window.__TAURI__.fs;
-                        const fileData = await fs.readFile(videoFile.path);
-                        const blob = new Blob([fileData], { type: 'video/mp4' });
-                        video.src = URL.createObjectURL(blob);
-                    } catch (e) {
-                        console.error('Failed to read file via Tauri fs:', e);
-                        video.src = getFileUrl(videoFile);
-                    }
-                } else {
-                    video.src = getFileUrl(videoFile);
-                }
+                video.src = getFileUrl(videoFile);
                 
                 await new Promise((resolve, reject) => {
                     video.onloadedmetadata = resolve;
@@ -6814,10 +5515,6 @@ class VideoClipProcessor {
                 let buffer;
                 if (videoFile instanceof File) {
                     buffer = await videoFile.arrayBuffer();
-                } else if (videoFile.path && window.__TAURI__) {
-                    const fs = window.__TAURI__.fs;
-                    const data = await fs.readFile(videoFile.path);
-                    buffer = data.buffer;
                 } else if (videoFile.path || videoFile.name) {
                     const response = await fetch(getFileUrl(videoFile));
                     buffer = await response.arrayBuffer();
@@ -7179,7 +5876,6 @@ class VideoClipProcessor {
 
 class TeslaCamViewer {
     constructor() {
-        this.isTauri = !!window.__TAURI__;
         this.allFiles = [];
         this.eventGroups = [];
         this.currentEvent = null;
@@ -7236,8 +5932,6 @@ class TeslaCamViewer {
             exportRightPillar: document.getElementById('exportRightPillar'),
             addTimestamp: document.getElementById('addTimestamp'),
             mergeVideos: document.getElementById('mergeVideos'),
-            useLocalFFmpeg: document.getElementById('useLocalFFmpeg'),
-            ffmpegOptionRow: document.getElementById('ffmpegOptionRow'),
             clipProgress: document.getElementById('clipProgress'),
             clipProgressBar: document.getElementById('clipProgressBar'),
             clipProgressText: document.getElementById('clipProgressText'),
@@ -7325,15 +6019,6 @@ class TeslaCamViewer {
         }
         
         // Release thumbnail blob URLs
-        if (this.eventGroups) {
-            for (const event of this.eventGroups) {
-                if (event.thumbFile && !this.isTauri) {
-                    // Thumbnails in the web build may hold blob URLs that need releasing
-                    // though in practice the thumbnail URL is already revoked in img.onload
-                }
-            }
-        }
-        
         // Clear references to the old data
         this.allFiles = [];
         this.eventGroups = [];
@@ -7353,12 +6038,6 @@ class TeslaCamViewer {
         this.dom.selectFolderBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Under Tauri, pick the directory with the dialog API
-            if (this.isTauri) {
-                await this.selectTauriDirectory();
-                return;
-            }
             
             // Prefer the File System Access API (it supports persistent directory handles)
             if (supportsFileSystemAccess()) {
@@ -7399,40 +6078,6 @@ class TeslaCamViewer {
             this.dom.sidebar.classList.remove('drag-over');
         });
         dropZone.addEventListener('drop', (e) => this.handleDrop(e));
-
-        // Tauri File Drop Support
-        if (this.isTauri) {
-            const tauri = getTauri();
-            if (tauri && tauri.event) {
-                console.log('Registering Tauri drag/drop listeners');
-                
-                // Tauri 2 uses different event names
-                const dropEvent = 'tauri://drag-drop';
-                const enterEvent = 'tauri://drag-enter';
-                const leaveEvent = 'tauri://drag-leave';
-                
-                tauri.event.listen(enterEvent, (event) => {
-                    console.log('Tauri drag enter:', event);
-                    this.dom.sidebar.classList.add('drag-over');
-                }).catch(err => console.error('Failed to listen to drag-enter', err));
-                
-                tauri.event.listen(leaveEvent, (event) => {
-                    console.log('Tauri drag leave:', event);
-                    this.dom.sidebar.classList.remove('drag-over');
-                }).catch(err => console.error('Failed to listen to drag-leave', err));
-                
-                tauri.event.listen(dropEvent, (event) => {
-                    console.log('Tauri drag drop event received:', event);
-                    this.dom.sidebar.classList.remove('drag-over');
-                    const paths = event.payload?.paths || event.payload;
-                    if (paths && paths.length > 0) {
-                        this.handleTauriDrop(paths);
-                    }
-                }).catch(err => console.error('Failed to listen to drag-drop', err));
-            } else {
-                console.warn('Tauri detected but event API not found. window.__TAURI__:', tauri);
-            }
-        }
 
         this.dom.eventFilter.addEventListener('change', () => this.filterAndRender());
         this.dom.toggleSidebarBtn.addEventListener('click', () => this.toggleSidebar());
@@ -7672,11 +6317,6 @@ class TeslaCamViewer {
         e.stopPropagation();
         this.dom.sidebar.classList.remove('drag-over');
 
-        if (this.isTauri) {
-            console.log('Tauri drop detected, waiting for tauri://file-drop event');
-            return;
-        }
-
         const items = e.dataTransfer.items;
         if (!items) return;
 
@@ -7738,112 +6378,7 @@ class TeslaCamViewer {
         }
     }
 
-    async handleTauriDrop(paths) {
-        console.log('[Tauri Drop] Received paths:', paths);
-        
-        // Show loading state
-        const loadingDiv = document.createElement('div');
-        loadingDiv.id = 'tauri-loading';
-        loadingDiv.style.position = 'fixed';
-        loadingDiv.style.top = '50%';
-        loadingDiv.style.left = '50%';
-        loadingDiv.style.transform = 'translate(-50%, -50%)';
-        loadingDiv.style.padding = '20px';
-        loadingDiv.style.background = 'rgba(0,0,0,0.8)';
-        loadingDiv.style.color = 'white';
-        loadingDiv.style.borderRadius = '10px';
-        loadingDiv.style.zIndex = '9999';
-        loadingDiv.innerText = 'Scanning files...';
-        document.body.appendChild(loadingDiv);
 
-        try {
-            const allFiles = [];
-            // Remember the first valid directory path for saving
-            let validDirPath = null;
-            
-            for (const path of paths) {
-                console.log('[Tauri Drop] Scanning path:', path);
-                const files = await this.scanTauriFiles(path, path);
-                console.log('[Tauri Drop] Found files:', files.length);
-                allFiles.push(...files);
-                
-                // Remember the first path as the save directory
-                if (!validDirPath && files.length > 0) {
-                    validDirPath = path;
-                }
-            }
-
-            console.log('[Tauri Drop] Total files found:', allFiles.length);
-            if (allFiles.length > 0) {
-                // Log first few files for debugging
-                allFiles.slice(0, 5).forEach(f => {
-                    console.log('[Tauri Drop] Sample file:', f.name, 'webkitRelativePath:', f.webkitRelativePath);
-                });
-                
-                // Check this really is a TeslaCam directory
-                const hasTeslaCamSubfolders = allFiles.some(file => 
-                    file.webkitRelativePath.includes('RecentClips/') ||
-                    file.webkitRelativePath.includes('SavedClips/') ||
-                    file.webkitRelativePath.includes('SentryClips/')
-                );
-                
-                if (hasTeslaCamSubfolders && validDirPath) {
-                    // Persist the path so the next launch can reuse it
-                    await this.saveTauriConfig({ lastTeslaCamPath: validDirPath });
-                    console.log('[Tauri Drop] Saved path to config:', validDirPath);
-                }
-                
-                this.handleFolderSelection(allFiles);
-            } else {
-                alert('No files found in the dropped folder.');
-            }
-        } catch (e) {
-            console.error('Tauri drop error:', e);
-            alert('Error reading files: ' + e.message);
-        } finally {
-            if (loadingDiv) loadingDiv.remove();
-        }
-    }
-
-    async scanTauriFiles(currentPath, rootPath) {
-        const tauri = getTauri();
-        const files = [];
-        
-        try {
-            let isDir = false;
-            let isFile = false;
-            
-            try {
-                const metadata = await tauri.fs.stat(currentPath);
-                isDir = metadata.isDirectory;
-                isFile = metadata.isFile;
-            } catch (e) {
-                console.warn('Stat failed for', currentPath, e);
-                return [];
-            }
-
-            if (isFile) {
-                const name = currentPath.split(/[\\/]/).pop();
-                files.push(new TauriFile({ name, path: currentPath }, rootPath));
-            } else if (isDir) {
-                const entries = await tauri.fs.readDir(currentPath);
-                for (const entry of entries) {
-                     const separator = currentPath.includes('\\') ? '\\' : '/';
-                     const fullPath = currentPath + (currentPath.endsWith(separator) ? '' : separator) + entry.name;
-                     
-                     if (entry.isDirectory) {
-                         const subFiles = await this.scanTauriFiles(fullPath, rootPath);
-                         files.push(...subFiles);
-                     } else if (entry.isFile) {
-                         files.push(new TauriFile({ name: entry.name, path: fullPath }, rootPath));
-                     }
-                }
-            }
-        } catch (e) {
-            console.warn(`Error scanning ${currentPath}:`, e);
-        }
-        return files;
-    }
 
     async handleFolderSelection(files) {
         // Drop stale data and free memory
@@ -8120,7 +6655,7 @@ class TeslaCamViewer {
                     let buffer;
                     if (file instanceof File) {
                         buffer = await file.arrayBuffer();
-                    } else if (file instanceof TauriFile) {
+                    } else if (file && typeof file.arrayBuffer === 'function') {
                         buffer = await file.arrayBuffer();
                     } else if (file && file.path) {
                         const response = await fetch(getFileUrl(file));
@@ -8269,7 +6804,7 @@ class TeslaCamViewer {
                         let buffer;
                         if (file instanceof File) {
                             buffer = await file.arrayBuffer();
-                        } else if (file instanceof TauriFile) {
+                        } else if (file && typeof file.arrayBuffer === 'function') {
                             buffer = await file.arrayBuffer();
                         } else if (file && file.path) {
                             const response = await fetch(getFileUrl(file));
@@ -8377,62 +6912,8 @@ class TeslaCamViewer {
             const safeTimestamp = eventTime.replace(/[:\s]/g, '-').replace(/\//g, '-');
             const filename = `tesla_metadata_${safeTimestamp}.csv`;
             
-            // Tauri environment: use Tauri dialog and fs APIs
-            if (window.__TAURI__) {
-                try {
-                    const tauri = window.__TAURI__;
-                    const invoke = tauri.core?.invoke || tauri.invoke || (tauri.tauri && tauri.tauri.invoke);
-                    
-                    if (!invoke) {
-                        throw new Error('Tauri invoke not found');
-                    }
-                    
-                    // Use Tauri dialog to get save path
-                    const savePath = await invoke('plugin:dialog|save', {
-                        options: {
-                            defaultPath: filename,
-                            filters: [{
-                                name: 'CSV File',
-                                extensions: ['csv']
-                            }]
-                        }
-                    });
-                    
-                    const resolvedSavePath = typeof savePath === 'string' ? savePath : savePath?.path;
-                    if (!resolvedSavePath) {
-                        console.log('[ExportCSV] User cancelled save dialog');
-                        return;
-                    }
-                    
-                    // Write CSV content using Tauri fs
-                    const fs = tauri.fs;
-                    if (fs && fs.writeTextFile) {
-                        await fs.writeTextFile(resolvedSavePath, csvContent);
-                    } else if (fs && fs.writeFile) {
-                        const encoder = new TextEncoder();
-                        const uint8Array = encoder.encode(csvContent);
-                        await fs.writeFile(resolvedSavePath, uint8Array);
-                    } else {
-                        // Fallback to custom command
-                        const encoder = new TextEncoder();
-                        const bytes = Array.from(encoder.encode(csvContent));
-                        await invoke('write_binary_file', {
-                            path: resolvedSavePath,
-                            bytes
-                        });
-                    }
-                    
-                    console.log(`[ExportCSV] Exported ${allMetadata.length} metadata records to ${resolvedSavePath}`);
-                    this.showToast(translations.exportMetadataSuccess, 'success');
-                    return;
-                } catch (err) {
-                    console.error('[ExportCSV] Tauri save failed:', err);
-                    // Fall through to web fallback
-                }
-            }
-            
             // Web environment: Try to use File System Access API for save dialog
-            if ('showSaveFilePicker' in window && !window.__TAURI__) {
+            if ('showSaveFilePicker' in window) {
                 try {
                     const fileHandle = await window.showSaveFilePicker({
                         suggestedName: filename,
@@ -8587,111 +7068,7 @@ class TeslaCamViewer {
         this.setLanguage(lang);
     }
 
-    /**
-     * Resolve the path of the Tauri config file
-     */
-    async getTauriConfigPath() {
-        const tauri = getTauri();
-        if (!tauri || !tauri.path) return null;
-        
-        try {
-            // Store the config in the app data directory
-            const appDataDir = await tauri.path.appDataDir();
-            return `${appDataDir}config.json`;
-        } catch (e) {
-            console.warn('[getTauriConfigPath] Failed to get app data dir:', e);
-            return null;
-        }
-    }
-
-    /**
-     * Write the Tauri config to disk
-     */
-    async saveTauriConfig(config) {
-        const tauri = getTauri();
-        if (!tauri || !tauri.fs) return;
-        
-        try {
-            const configPath = await this.getTauriConfigPath();
-            if (!configPath) return;
-            
-            // Make sure the directory exists
-            const appDataDir = await tauri.path.appDataDir();
-            try {
-                await tauri.fs.mkdir(appDataDir, { recursive: true });
-            } catch (e) {
-                // The directory may already exist
-            }
-            
-            await tauri.fs.writeTextFile(configPath, JSON.stringify(config, null, 2));
-            console.log('[saveTauriConfig] Config saved to:', configPath);
-        } catch (e) {
-            console.warn('[saveTauriConfig] Failed to save config:', e);
-        }
-    }
-
-    /**
-     * Read the Tauri config file
-     */
-    async loadTauriConfig() {
-        const tauri = getTauri();
-        if (!tauri || !tauri.fs) return null;
-        
-        try {
-            const configPath = await this.getTauriConfigPath();
-            if (!configPath) return null;
-            
-            const content = await tauri.fs.readTextFile(configPath);
-            return JSON.parse(content);
-        } catch (e) {
-            // Missing file, or it failed to parse
-            console.log('[loadTauriConfig] No config file found or parse error:', e.message);
-            return null;
-        }
-    }
-
-    /**
-     * Reload the TeslaCam directory chosen last time
-     */
     async loadLastTeslaCamPath() {
-        // Tauri: the path lives in the local config file
-        if (this.isTauri) {
-            // Give the Tauri API a moment to finish initialising
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            const tauri = getTauri();
-            if (!tauri || !tauri.fs) {
-                console.warn('[loadLastTeslaCamPath] Tauri fs API not available');
-                return;
-            }
-            
-            // Read the previous path from the config file
-            const config = await this.loadTauriConfig();
-            const lastPath = config?.lastTeslaCamPath;
-            
-            if (!lastPath) {
-                console.log('[loadLastTeslaCamPath] No saved path found in config');
-                return;
-            }
-            
-            console.log('[loadLastTeslaCamPath] Found saved path:', lastPath);
-            
-            try {
-                // Check the directory is still there
-                const metadata = await tauri.fs.stat(lastPath);
-                if (!metadata.isDirectory) {
-                    console.log('[loadLastTeslaCamPath] Path is not a directory');
-                    return;
-                }
-                
-                // Load that directory automatically
-                console.log('[loadLastTeslaCamPath] Auto-loading directory...');
-                await this.loadTauriDirectory(lastPath);
-            } catch (e) {
-                console.warn('[loadLastTeslaCamPath] Failed to load saved path:', e);
-            }
-            return;
-        }
         
         // Web: the directory handle is kept via the File System Access API and IndexedDB
         if (supportsFileSystemAccess()) {
@@ -8831,108 +7208,6 @@ class TeslaCamViewer {
         }
     }
 
-    /**
-     * Pick a directory with the Tauri dialog
-     */
-    async selectTauriDirectory() {
-        const tauri = getTauri();
-        if (!tauri) return;
-        
-        try {
-            // Use the previous path as the default directory
-            const config = await this.loadTauriConfig();
-            const lastPath = config?.lastTeslaCamPath;
-            
-            // Pick the directory with the Tauri dialog API
-            let dialog = tauri.dialog;
-            if (!dialog && tauri.api) {
-                dialog = tauri.api.dialog;
-            }
-            
-            if (!dialog || !dialog.open) {
-                console.warn('[selectTauriDirectory] Dialog API not available');
-                this.dom.folderInput.click();
-                return;
-            }
-            
-            const selected = await dialog.open({
-                directory: true,
-                multiple: false,
-                title: 'Select TeslaCam Directory',
-                defaultPath: lastPath || undefined
-            });
-            
-            if (!selected) {
-                console.log('[selectTauriDirectory] User cancelled');
-                return;
-            }
-            
-            const path = typeof selected === 'string' ? selected : selected[0];
-            console.log('[selectTauriDirectory] Selected path:', path);
-            
-            await this.loadTauriDirectory(path);
-        } catch (e) {
-            console.error('[selectTauriDirectory] Error:', e);
-            this.showToast('Failed to open directory: ' + e.message, 'error');
-        }
-    }
-
-    /**
-     * Load a Tauri directory
-     */
-    async loadTauriDirectory(path) {
-        // Show loading state
-        const loadingDiv = document.createElement('div');
-        loadingDiv.id = 'tauri-loading';
-        loadingDiv.style.position = 'fixed';
-        loadingDiv.style.top = '50%';
-        loadingDiv.style.left = '50%';
-        loadingDiv.style.transform = 'translate(-50%, -50%)';
-        loadingDiv.style.padding = '20px';
-        loadingDiv.style.background = 'rgba(0,0,0,0.8)';
-        loadingDiv.style.color = 'white';
-        loadingDiv.style.borderRadius = '10px';
-        loadingDiv.style.zIndex = '9999';
-        loadingDiv.innerText = 'Scanning files...';
-        document.body.appendChild(loadingDiv);
-
-        try {
-            console.log('[loadTauriDirectory] Scanning path:', path);
-            const files = await this.scanTauriFiles(path, path);
-            console.log('[loadTauriDirectory] Found files:', files.length);
-
-            if (files.length > 0) {
-                // Log first few files for debugging
-                files.slice(0, 5).forEach(f => {
-                    console.log('[loadTauriDirectory] Sample file:', f.name, 'webkitRelativePath:', f.webkitRelativePath);
-                });
-                
-                // Check this really is a TeslaCam directory
-                const hasTeslaCamSubfolders = files.some(file => 
-                    file.webkitRelativePath.includes('RecentClips/') ||
-                    file.webkitRelativePath.includes('SavedClips/') ||
-                    file.webkitRelativePath.includes('SentryClips/')
-                );
-                
-                if (hasTeslaCamSubfolders) {
-                    // Persist the path to the config file
-                    await this.saveTauriConfig({ lastTeslaCamPath: path });
-                    console.log('[loadTauriDirectory] Saved path to config file');
-                    
-                    await this.handleFolderSelection(files);
-                } else {
-                    this.showToast(i18n[this.currentLanguage].invalidFolder, 'error', 5000);
-                }
-            } else {
-                this.showToast('No files found in the selected folder.', 'error');
-            }
-        } catch (e) {
-            console.error('[loadTauriDirectory] Error:', e);
-            this.showToast('Error reading files: ' + e.message, 'error');
-        } finally {
-            if (loadingDiv) loadingDiv.remove();
-        }
-    }
 
     updateAllUIText(lang) {
         const translations = i18n[lang];
@@ -9115,38 +7390,6 @@ class TeslaCamViewer {
         const activeCamera = this.multiCameraPlayer.activeCamera;
         const file = segment.files[activeCamera];
     
-        // In Tauri desktop, open file explorer and select the file
-        if (this.isTauri && file && file.path) {
-            try {
-                const tauri = window.__TAURI__;
-                const shell = tauri.shell;
-                
-                // Detect OS and use appropriate command
-                const platform = navigator.platform.toLowerCase();
-                const isWindows = platform.includes('win');
-                const isMac = platform.includes('mac');
-                
-                if (isWindows) {
-                    // Windows: explorer /select,"path" - must be a single argument
-                    const normalizedPath = file.path.replace(/\//g, '\\');
-                    const command = shell.Command.create('explorer', [`/select,${normalizedPath}`]);
-                    await command.execute();
-                } else if (isMac) {
-                    // macOS: open -R "path"
-                    const command = shell.Command.create('open', ['-R', file.path]);
-                    await command.execute();
-                } else {
-                    // Linux: xdg-open parent directory (can't select file directly)
-                    const parentDir = file.path.substring(0, file.path.lastIndexOf('/'));
-                    const command = shell.Command.create('xdg-open', [parentDir]);
-                    await command.execute();
-                }
-                return;
-            } catch (e) {
-                console.error('Failed to reveal file in explorer:', e);
-                // Fall through to show modal with path
-            }
-        }
         
         // Fallback: show modal with file path for easy copying
         // Prefer absolute path (file.path) if available, otherwise use webkitRelativePath
@@ -9217,51 +7460,6 @@ class TeslaCamViewer {
             return;
         }
 
-        if (window.__TAURI__) {
-            try {
-                const invoke = window.__TAURI__.core?.invoke || window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke);
-                if (!invoke) throw new Error('Tauri invoke not found');
-
-                const defaultName = file.name || 'TeslaCam.mp4';
-                const savePath = await invoke('plugin:dialog|save', {
-                    options: {
-                        defaultPath: defaultName,
-                        filters: [{
-                            name: 'Video',
-                            extensions: ['mp4']
-                        }]
-                    }
-                });
-
-                const resolvedSavePath = typeof savePath === 'string' ? savePath : savePath?.path;
-                if (!resolvedSavePath) {
-                    return;
-                }
-
-                const arrayBuffer = await file.arrayBuffer();
-                const uint8Array = new Uint8Array(arrayBuffer);
-
-                // Use Tauri fs plugin to write binary file
-                const fs = window.__TAURI__.fs;
-                if (fs && fs.writeFile) {
-                    await fs.writeFile(resolvedSavePath, uint8Array);
-                } else {
-                    // Fallback to custom command
-                    const bytes = Array.from(uint8Array);
-                    await invoke('write_binary_file', {
-                        path: resolvedSavePath,
-                        bytes
-                    });
-                }
-
-                this.showToast('Saved', 'success');
-            } catch (e) {
-                console.error('Tauri download failed:', e);
-                const errorMsg = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
-                alert('Save failed: ' + errorMsg);
-            }
-            return;
-        }
 
         const a = document.createElement('a');
         const url = getFileUrl(file);
@@ -9367,27 +7565,6 @@ class TeslaCamViewer {
         this.dom.exportRight.checked = false;
         this.dom.addTimestamp.checked = true;
         this.dom.mergeVideos.checked = false;
-        
-        // Show FFmpeg option only in Tauri desktop
-        if (this.isTauri && this.dom.ffmpegOptionRow) {
-            this.dom.ffmpegOptionRow.style.display = 'flex';
-            // Check FFmpeg availability
-            this.videoClipProcessor.checkFFmpeg().then(hasFFmpeg => {
-                if (hasFFmpeg) {
-                    this.dom.useLocalFFmpeg.checked = true;
-                    this.dom.useLocalFFmpeg.disabled = false;
-                    document.getElementById('useLocalFFmpegLabel').textContent = 
-                        'Use FFmpeg Fast Export';
-                } else {
-                    this.dom.useLocalFFmpeg.checked = false;
-                    this.dom.useLocalFFmpeg.disabled = true;
-                    document.getElementById('useLocalFFmpegLabel').textContent = 
-                        'FFmpeg Not Installed';
-                }
-            });
-        } else if (this.dom.ffmpegOptionRow) {
-            this.dom.ffmpegOptionRow.style.display = 'none';
-        }
         
         // Hide progress
         this.dom.clipProgress.style.display = 'none';
@@ -9535,13 +7712,12 @@ class TeslaCamViewer {
         const addTimestamp = this.dom.addTimestamp.checked;
         const addMetadata = document.getElementById('addMetadata').checked;
         const mergeGrid = this.dom.mergeVideos.checked && cameras.length > 1;
-        const useLocalFFmpeg = this.isTauri && this.dom.useLocalFFmpeg && this.dom.useLocalFFmpeg.checked;
         
-        console.log('[startClipExport] Export options:', { addTimestamp, addMetadata, mergeGrid, useLocalFFmpeg, cameras });
+        console.log('[startClipExport] Export options:', { addTimestamp, addMetadata, mergeGrid, cameras });
         
         // WEB ONLY: Ask for save location upfront to enable streaming
         let fileHandle = null;
-        if (!this.isTauri && 'showSaveFilePicker' in window && !useLocalFFmpeg) {
+        if ('showSaveFilePicker' in window) {
              // Only support streaming for Grid (1 file) or Single Camera (1 file)
              if (mergeGrid || cameras.length === 1) {
                   try {
@@ -9622,7 +7798,6 @@ class TeslaCamViewer {
                         }
                     }
                 },
-                useLocalFFmpeg,
                 this.currentLanguage,
                 fileHandle,
                 this.metadataManager
@@ -9632,171 +7807,65 @@ class TeslaCamViewer {
             
             this.dom.clipProgressBar.style.width = '100%';
             
-            if (window.__TAURI__) {
-                // Tauri implementation
-                this.dom.clipProgressText.textContent = translations.exporting;
+            // Browser download - Show buttons
+            this.dom.clipProgressText.textContent = 'Video ready - use the button below to save it';
+            
+            // Disable clip info and options since video is already generated
+            this.dom.clipInfo.classList.add('disabled');
+            this.dom.clipOptions.classList.add('disabled');
+            
+            // Store results for cleanup when modal closes
+            this.pendingExportBlobs = results;
+            
+            if (downloadButtons) {
+                downloadButtons.style.display = 'flex';
+                
                 for (const result of results) {
-                    // Check if result is from FFmpeg (file path) or Canvas (blob)
-                    if (result.isFile && result.path) {
-                        const rawPath = result.path;
-                        const defaultFilename = rawPath.replace(/\\/g, '/').split('/').pop();
-                        const ext = defaultFilename.split('.').pop() || 'mp4';
-                        
-                        console.log('[Tauri Save] Finalizing export for:', defaultFilename, 'from temp:', rawPath);
-                        
-                        try {
-                            const tauri = window.__TAURI__;
-                            const invoke = tauri.core?.invoke || tauri.invoke;
-                            const fs = tauri.fs;
-                            const dialog = tauri.dialog;
-                            
-                            let savePath;
-                            if (dialog && typeof dialog.save === 'function') {
-                                console.log('[Tauri Save] Using dialog.save API');
-                                savePath = await dialog.save({
-                                    defaultPath: defaultFilename,
-                                    filters: [{
-                                        name: 'Video',
-                                        extensions: [ext]
-                                    }]
-                                });
-                            } else {
-                                console.log('[Tauri Save] Falling back to invoke plugin:dialog|save');
-                                savePath = await invoke('plugin:dialog|save', {
-                                    options: {
-                                        defaultPath: defaultFilename,
-                                        filters: [{
-                                            name: 'Video',
-                                            extensions: [ext]
-                                        }]
-                                    }
-                                });
-                            }
-                            
-                            const resolvedSavePath = typeof savePath === 'string' ? savePath : savePath?.path;
-                            if (resolvedSavePath && resolvedSavePath !== result.path) {
-                                // Copy file to new location
-                                await fs.copyFile(result.path, resolvedSavePath);
-                                // Remove temp file
-                                await fs.remove(result.path);
-                                this.showToast('Saved', 'success');
-                            } else if (resolvedSavePath === result.path) {
-                                this.showToast('Saved', 'success');
-                            } else {
-                                // User cancelled, keep the file in original location
-                                this.showToast(`Video saved to: ${result.path}`, 'success');
-                            }
-                        } catch (e) {
-                            console.error('File move failed:', e);
-                            this.showToast(`Video saved to: ${result.path}`, 'success');
-                        }
-                    } else if (result.blob) {
-                        // Canvas export - blob needs to be saved
-                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                        const filename = `TeslaCam_${result.camera}_${timestamp}.webm`;
-                        
-                        if (result.blob.size === 0) {
-                            console.error('Invalid blob for camera:', result.camera);
-                            alert('Export failed: the generated video file is empty');
-                            continue;
-                        }
-                        
-                        try {
-                            const invoke = window.__TAURI__.core?.invoke || window.__TAURI__.invoke;
-                            const fs = window.__TAURI__.fs;
-
-                            const savePath = await invoke('plugin:dialog|save', {
-                                options: {
-                                    defaultPath: filename,
-                                    filters: [{
-                                        name: 'Video',
-                                        extensions: ['webm']
-                                    }]
-                                }
-                            });
-                            
-                            const resolvedSavePath = typeof savePath === 'string' ? savePath : savePath?.path;
-                            if (resolvedSavePath) {
-                                const arrayBuffer = await result.blob.arrayBuffer();
-                                const uint8Array = new Uint8Array(arrayBuffer);
-                                
-                                // Tauri v2 uses writeFile
-                                await fs.writeFile(resolvedSavePath, uint8Array);
-                                this.showToast('Saved', 'success');
-                            }
-                        } catch (e) {
-                            console.error('Tauri save failed:', e);
-                            alert('Save failed: ' + (e.message || e));
-                        }
-                    }
-                }
-                
-                this.dom.clipProgressText.textContent = translations.complete;
-                setTimeout(() => {
-                    this.hideClipModal();
-                    this.videoControls.toggleClipMode(); 
-                }, 2000);
-            } else {
-                // Browser download - Show buttons
-                this.dom.clipProgressText.textContent = 'Video ready - use the button below to save it';
-                
-                // Disable clip info and options since video is already generated
-                this.dom.clipInfo.classList.add('disabled');
-                this.dom.clipOptions.classList.add('disabled');
-                
-                // Store results for cleanup when modal closes
-                this.pendingExportBlobs = results;
-                
-                if (downloadButtons) {
-                    downloadButtons.style.display = 'flex';
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    const filename = `TeslaCam_${result.camera}_${timestamp}.webm`;
+                    const isGrid = result.camera === 'grid';
+                    const cameraName = isGrid ? 'Grid' : result.camera;
+                    const sizeInMB = result.blob.size / (1024 * 1024);
+                    const sizeText = sizeInMB >= 1 ? `${sizeInMB.toFixed(1)} MB` : `${(result.blob.size / 1024).toFixed(0)} KB`;
                     
-                    for (const result of results) {
-                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                        const filename = `TeslaCam_${result.camera}_${timestamp}.webm`;
-                        const isGrid = result.camera === 'grid';
-                        const cameraName = isGrid ? 'Grid' : result.camera;
-                        const sizeInMB = result.blob.size / (1024 * 1024);
-                        const sizeText = sizeInMB >= 1 ? `${sizeInMB.toFixed(1)} MB` : `${(result.blob.size / 1024).toFixed(0)} KB`;
-                        
-                        const btn = document.createElement('button');
-                        btn.className = `download-btn${isGrid ? ' grid-btn' : ''}`;
-                        
-                        if (result.saved) {
-                             btn.disabled = true;
-                             btn.innerHTML = `
+                    const btn = document.createElement('button');
+                    btn.className = `download-btn${isGrid ? ' grid-btn' : ''}`;
+                    
+                    if (result.saved) {
+                         btn.disabled = true;
+                         btn.innerHTML = `
+                            <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+                            <span class="btn-text">${cameraName} saved</span>
+                        `;
+                         if (result.blob && result.blob.size > 0) {
+                             btn.innerHTML += `<span class="btn-size">${sizeText}</span>`;
+                         }
+                         this.dom.clipProgressText.textContent = translations.complete;
+                    } else {
+                        btn.innerHTML = `
+                            <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-download-simple"/></svg></span>
+                            <span class="btn-text">Save ${cameraName} video</span>
+                            <span class="btn-size">${sizeText}</span>
+                        `;
+                        btn.onclick = async () => {
+                            await this.saveVideoFile(result.blob, filename);
+                            // Mark as downloaded
+                            result.downloaded = true;
+                            btn.disabled = true;
+                            btn.innerHTML = `
                                 <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
                                 <span class="btn-text">${cameraName} saved</span>
-                            `;
-                             if (result.blob && result.blob.size > 0) {
-                                 btn.innerHTML += `<span class="btn-size">${sizeText}</span>`;
-                             }
-                             this.dom.clipProgressText.textContent = translations.complete;
-                        } else {
-                            btn.innerHTML = `
-                                <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-download-simple"/></svg></span>
-                                <span class="btn-text">Save ${cameraName} video</span>
                                 <span class="btn-size">${sizeText}</span>
                             `;
-                            btn.onclick = async () => {
-                                await this.saveVideoFile(result.blob, filename);
-                                // Mark as downloaded
-                                result.downloaded = true;
-                                btn.disabled = true;
-                                btn.innerHTML = `
-                                    <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
-                                    <span class="btn-text">${cameraName} saved</span>
-                                    <span class="btn-size">${sizeText}</span>
-                                `;
-                            };
-                        }
-                        downloadButtons.appendChild(btn);
+                        };
                     }
+                    downloadButtons.appendChild(btn);
                 }
-                
-                // Hide both buttons since we have the X close button
-                this.dom.cancelClipBtn.style.display = 'none';
-                this.dom.startClipBtn.style.display = 'none';
             }
+            
+            // Hide both buttons since we have the X close button
+            this.dom.cancelClipBtn.style.display = 'none';
+            this.dom.startClipBtn.style.display = 'none';
             
         } catch (error) {
             console.error('Clip export error:', error);
@@ -9854,36 +7923,7 @@ class TeslaCamViewer {
         const { lat, lon } = this.currentMapCoordinates;
         const url = `https://www.google.com/maps?q=${lat},${lon}`;
         
-        // In Tauri desktop, use shell plugin to open in default browser
-        if (this.isTauri && window.__TAURI__) {
-            try {
-                const tauri = window.__TAURI__;
-                // Tauri 2: try different API paths for shell.open
-                let openFn = null;
-                if (tauri.shell?.open) {
-                    openFn = tauri.shell.open;
-                } else if (tauri.opener?.open) {
-                    openFn = tauri.opener.open;
-                }
-                
-                if (openFn) {
-                    await openFn(url);
-                } else {
-                    // Fallback: use invoke to call shell plugin directly
-                    const invoke = tauri.core?.invoke || tauri.invoke || (tauri.tauri && tauri.tauri.invoke);
-                    if (invoke) {
-                        await invoke('plugin:shell|open', { path: url });
-                    } else {
-                        window.open(url, '_blank');
-                    }
-                }
-            } catch (e) {
-                console.error('Failed to open URL with Tauri shell:', e);
-                window.open(url, '_blank');
-            }
-        } else {
-            window.open(url, '_blank');
-        }
+        window.open(url, '_blank');
         this.hideMapModal();
     }
 

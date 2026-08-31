@@ -4,7 +4,7 @@
  * When the app is served by its container, the user's TeslaCam folder is
  * bind-mounted at /teslacam and nginx exposes it with `autoindex_format json`.
  * This module walks that listing and produces file-like objects that the rest
- * of the player already knows how to consume: the same duck type as TauriFile
+ * of the player already knows how to consume: a plain duck type
  * (name / path / webkitRelativePath / text() / arrayBuffer()), so playback,
  * thumbnails and metadata parsing all flow through getFileUrl() unchanged.
  *
