@@ -20,6 +20,7 @@ const http = require('http');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const crypto = require('crypto');
 const C = require('./tesla-crypto.js');
 const { TeslaAuth, inspectToken } = require('./tesla-auth.js');
 
@@ -65,9 +66,18 @@ async function readHeader(fd) {
     return buf;
 }
 
+/**
+ * The API's item id is chosen by the client: Tesla's own page uses its internal
+ * video id. There is no identifier inside the file to reuse, so the path is
+ * both stable and unique here.
+ */
+function itemId(relativePath) {
+    return crypto.createHash('sha1').update(relativePath).digest('hex');
+}
+
 /** Ask Tesla for the key of one file. Only identifiers leave the machine. */
-async function fetchKey(meta) {
-    if (keyCache.has(meta.id)) return keyCache.get(meta.id);
+async function fetchKey(meta, id) {
+    if (keyCache.has(id)) return keyCache.get(id);
 
     const request = async () => {
         const token = await auth.getAccessToken();
@@ -76,7 +86,7 @@ async function fetchKey(meta) {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
                 items: [{
-                    id: meta.id,
+                    id,
                     vin: meta.vin,
                     key_id: meta.key_id,
                     timestamp: meta.timestamp,
@@ -109,14 +119,14 @@ async function fetchKey(meta) {
     }
 
     const body = await response.json();
-    const result = (body.results || []).find((r) => r && r.id === meta.id) || (body.results || [])[0];
+    const result = (body.results || []).find((r) => r && r.id === id) || (body.results || [])[0];
     if (!result) throw new Error('Tesla returned no result for this clip');
     if (result.error) throw new Error(`Tesla refused the key: ${result.error}`);
     if (!result.key) throw new Error('Tesla returned no key for this clip');
 
     const key = Buffer.from(result.key, 'base64');
     if (key.length !== 16) throw new Error(`unexpected key length ${key.length}, expected 16`);
-    cacheKey(meta.id, key);
+    cacheKey(id, key);
     return key;
 }
 
@@ -126,13 +136,6 @@ async function readPage(fd, key, index) {
     const { bytesRead } = await fd.read(buf, 0, C.PAGE_SIZE, C.pageOffset(index));
     if (bytesRead === 0) return Buffer.alloc(0);
     return C.decryptPage(key, index, buf.subarray(0, bytesRead - (bytesRead % 16)));
-}
-
-async function plaintextSize(fd, key, encryptedSize) {
-    const pages = Math.ceil((encryptedSize - C.PAYLOAD_START) / C.PAGE_SIZE);
-    if (pages <= 0) return 0;
-    const last = await readPage(fd, key, pages - 1);
-    return C.plaintextLength(encryptedSize, last);
 }
 
 function parseRange(header, size) {
@@ -160,12 +163,12 @@ async function serveClip(req, res, rel) {
 
     try {
         const stat = await fd.stat();
-        const meta = C.parseHeader(await readHeader(fd));
-        log.info(`[decrypt] ${path.basename(file)} size=${stat.size} uuid=${meta.id} ` +
-                 `key_id=${meta.key_id} vin=${meta.vin.slice(0, 3)}***${meta.vin.slice(-4)} ` +
-                 `ec=0x${Buffer.from(meta.public_key, 'base64')[0].toString(16)}`);
-        const key = await fetchKey(meta);
-        const size = await plaintextSize(fd, key, stat.size);
+        const meta = C.parseHeader(await readHeader(fd), stat.size);
+        const id = itemId(rel);
+        log.info(`[decrypt] ${path.basename(file)} size=${stat.size} plaintext=${meta.plaintextSize} ` +
+                 `key_id=${meta.key_id} vin=${meta.vin.slice(0, 3)}***${meta.vin.slice(-4)}`);
+        const key = await fetchKey(meta, id);
+        const size = meta.plaintextSize;
 
         const range = parseRange(req.headers.range, size);
         if (range === 'unsatisfiable') {
@@ -223,15 +226,16 @@ async function inspectClip(res, rel) {
         await fd.read(head, 0, head.length, 0);
         const at = (o, n) => head.length >= o + n ? head.subarray(o, o + n).toString('hex') : null;
         let parsed = null, parseError = null;
-        try { parsed = C.parseHeader(head); } catch (e) { parseError = e.message; }
+        try { parsed = C.parseHeader(head, stat.size); } catch (e) { parseError = e.message; }
         sendJson(res, 200, {
             size: stat.size,
             payloadWouldStartAt: C.PAYLOAD_START,
             looksLikePlainMp4: head.subarray(4, 8).toString() === 'ftyp',
             firstBytes: at(0x0000, 48),
             atPage2: at(0x1000, 48),
+            pageAligned: stat.size % C.PAGE_SIZE === 0,
             parsed: parsed && {
-                uuid: parsed.id,
+                plaintextSize: parsed.plaintextSize,
                 key_id: parsed.key_id,
                 vin: parsed.vin.replace(/.(?=.{4})/g, '*'),
                 vinLooksValid: /^[A-HJ-NPR-Z0-9]{17}$/.test(parsed.vin),

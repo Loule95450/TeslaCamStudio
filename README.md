@@ -206,35 +206,36 @@ footage never does, and the token stays server-side.
 
 #### Getting the token
 
-The token has to come from **dashcam.tesla.com itself**. A token from a
-third-party Tesla auth app (the owner-api audience) is rejected with HTTP 401:
-the dashcam service issues its own.
+The token has to come from **dashcam.tesla.com itself**. Its OAuth client is
+`dashcam`, and a token from a third-party Tesla auth app (client `ownerapi`) is
+refused with HTTP 401. These are the values the site uses, read from its own
+bundle:
 
-1. Open <https://dashcam.tesla.com> and sign in to your Tesla account.
-2. Open DevTools (F12) and select the **Network** tab.
-3. **Drag one encrypted clip onto the page.** Nothing calls the API until you
-   do, so an empty Network tab at this point is expected rather than a problem.
-   Any `.mp4` from `EncryptedClips/` will do.
-4. Click any request to `/api/1/`, open **Headers**, and find
-   `Authorization: Bearer eyJ...`.
-5. Copy everything after `Bearer ` into `TESLA_ACCESS_TOKEN`.
+| | |
+|---|---|
+| `client_id` | `dashcam` |
+| `scope` | `openid profile email employee` |
+| token endpoint | `https://auth.tesla.com/oauth2/v3/token` |
+| `redirect_uri` | `https://dashcam.tesla.com/callback` |
 
-If the page holds the token in storage rather than only in memory, the console
-snippet in `doc/find-tesla-token.js` will find it: paste it into the DevTools
-console on dashcam.tesla.com and it lists every JWT it can see with its `aud`
-claim and expiry, **without printing the tokens themselves**. Pick the one whose
-audience mentions the dashcam service and copy it with `copy(__tokens[0].token)`.
-An empty result means the token only exists in memory, and the Network tab is
-the only route.
+**The quick way.** Open <https://dashcam.tesla.com>, sign in, then paste the
+snippet in `doc/find-tesla-token.js` into the DevTools console. The site keeps
+its tokens in `localStorage` under keys starting `ROCP_`, so the snippet lists
+them with their audience and expiry **without printing the tokens themselves**.
+Copy the access token with `copy(__tokens[0].token)`.
 
-Treat it like a password. **It expires after a few hours**, so this is a
-per-session affair rather than a set-and-forget one.
+**Or from the network traffic.** With DevTools open on the Network tab, drag one
+encrypted clip onto the page. Nothing calls the API before you do, so an empty
+Network tab until then is expected. Then open any `/api/1/` request and copy
+what follows `Authorization: Bearer `.
 
-`TESLA_REFRESH_TOKEN` exists for the long-lived case, along with
-`TESLA_AUDIENCE`, `TESLA_CLIENT_ID` and `TESLA_SCOPE` to aim the refresh at the
-right service. Be warned that no public documentation confirms which audience
-dashcam.tesla.com accepts, so the refresh path may not work at all: the
-access-token route above is the one known to.
+Either way it goes in `TESLA_ACCESS_TOKEN`, and it expires after a few hours.
+
+For something longer lived, take the refresh token from the same
+`localStorage` (`ROCP_refreshToken`) and set `TESLA_REFRESH_TOKEN` instead. The
+container renews the access token itself against the `dashcam` client. Tesla
+rotates refresh tokens on use, so mount `/config` on a writable volume or the
+rotation is lost on the next restart.
 
 #### When it does not work
 

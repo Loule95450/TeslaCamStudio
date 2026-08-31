@@ -20,15 +20,13 @@
 const fs = require('fs');
 const path = require('path');
 
+// Taken from dashcam.tesla.com's own bundle. The dashcam service has its own
+// OAuth client: a token minted for `ownerapi` (what third-party Tesla auth apps
+// hand out) is refused with HTTP 401. There is no audience parameter.
 const TOKEN_URL = process.env.TESLA_TOKEN_URL || 'https://auth.tesla.com/oauth2/v3/token';
-const CLIENT_ID = process.env.TESLA_CLIENT_ID || 'ownerapi';
-const SCOPE = process.env.TESLA_SCOPE || 'openid email offline_access';
-// dashcam.tesla.com does not accept a plain owner-api token: it wants its own
-// audience. Configurable because the right value is not documented anywhere,
-// and an empty value omits the parameter entirely.
-const AUDIENCE = process.env.TESLA_AUDIENCE === undefined
-    ? 'https://dashcam.tesla.com'
-    : process.env.TESLA_AUDIENCE;
+const CLIENT_ID = process.env.TESLA_CLIENT_ID || 'dashcam';
+const SCOPE = process.env.TESLA_SCOPE || 'openid profile email employee';
+const REDIRECT_URI = process.env.TESLA_REDIRECT_URI || 'https://dashcam.tesla.com/callback';
 const EXPIRY_MARGIN_MS = 60_000;
 
 class TeslaAuth {
@@ -90,13 +88,13 @@ class TeslaAuth {
 
         const response = await fetch(TOKEN_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
                 grant_type: 'refresh_token',
                 client_id: CLIENT_ID,
                 refresh_token: refreshToken,
+                redirect_uri: REDIRECT_URI,
                 scope: SCOPE,
-                ...(AUDIENCE ? { audience: AUDIENCE } : {}),
             }),
         });
 
@@ -154,4 +152,4 @@ function inspectToken(token) {
     }
 }
 
-module.exports = { TeslaAuth, inspectToken, TOKEN_URL, CLIENT_ID, SCOPE, AUDIENCE };
+module.exports = { TeslaAuth, inspectToken, TOKEN_URL, CLIENT_ID, SCOPE, REDIRECT_URI };
