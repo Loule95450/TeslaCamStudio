@@ -61,7 +61,9 @@ function safePath(rel) {
 async function readHeader(fd) {
     const buf = Buffer.alloc(C.HEADER_SIZE);
     const { bytesRead } = await fd.read(buf, 0, C.HEADER_SIZE, 0);
-    if (bytesRead < C.HEADER_SIZE) throw new Error('file is too small to be an encrypted clip');
+    if (bytesRead < C.HEADER_SIZE) {
+        throw new C.InvalidHeaderError('file is too small to be an encrypted clip');
+    }
     return buf;
 }
 
@@ -155,7 +157,17 @@ async function serveClip(req, res, rel) {
 
     try {
         const stat = await fd.stat();
-        const meta = C.parseHeader(await readHeader(fd), stat.size);
+
+        let meta;
+        try {
+            meta = C.parseHeader(await readHeader(fd), stat.size);
+        } catch (e) {
+            if (!(e instanceof C.InvalidHeaderError)) throw e;
+            // Not an encrypted clip after all. Tesla's EncryptedClips tree is
+            // not uniformly encrypted - thumbnails in particular can be plain -
+            // so serve the bytes rather than failing the request.
+            return serveRaw(req, res, fd, stat, file);
+        }
         log.info(`[decrypt] ${path.basename(file)} size=${stat.size} plaintext=${meta.plaintextSize} ` +
                  `key_id=${meta.key_id} vin=${meta.vin.slice(0, 3)}***${meta.vin.slice(-4)}`);
         const key = await fetchKey(meta);
@@ -170,7 +182,7 @@ async function serveClip(req, res, rel) {
         const length = end - start + 1;
 
         res.writeHead(range ? 206 : 200, {
-            'Content-Type': 'video/mp4',
+            'Content-Type': contentTypeFor(file),
             'Content-Length': length,
             'Accept-Ranges': 'bytes',
             'Cache-Control': 'private, max-age=300',
@@ -337,6 +349,44 @@ async function runPrefetch() {
         prefetch.running = false;
         prefetch.finishedAt = new Date().toISOString();
     }
+}
+
+/** Stream a file untouched, with range support. */
+async function serveRaw(req, res, fd, stat, file) {
+    const size = stat.size;
+    const range = parseRange(req.headers.range, size);
+    if (range === 'unsatisfiable') {
+        res.writeHead(416, { 'Content-Range': `bytes */${size}` });
+        return res.end();
+    }
+    const { start, end } = range || { start: 0, end: Math.max(0, size - 1) };
+    res.writeHead(range ? 206 : 200, {
+        'Content-Type': contentTypeFor(file),
+        'Content-Length': end - start + 1,
+        'Accept-Ranges': 'bytes',
+        ...(range ? { 'Content-Range': `bytes ${start}-${end}/${size}` } : {}),
+    });
+    if (req.method === 'HEAD') return res.end();
+
+    // Explicit reads rather than a stream off this FileHandle: the header has
+    // already been read from it, and mixing the two stalls the response.
+    const CHUNK = 64 * 1024;
+    const buf = Buffer.alloc(CHUNK);
+    for (let pos = start; pos <= end; pos += CHUNK) {
+        const want = Math.min(CHUNK, end - pos + 1);
+        const { bytesRead } = await fd.read(buf, 0, want, pos);
+        if (!bytesRead) break;
+        if (!res.write(Buffer.from(buf.subarray(0, bytesRead)))) {
+            await new Promise((r) => res.once('drain', r));
+        }
+    }
+    res.end();
+}
+
+function contentTypeFor(file) {
+    if (file.endsWith('.png')) return 'image/png';
+    if (file.endsWith('.json')) return 'application/json';
+    return 'video/mp4';
 }
 
 function sendJson(res, code, payload) {

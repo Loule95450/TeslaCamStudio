@@ -1498,6 +1498,84 @@ class MetadataManager {
         }
     }
     
+    /**
+     * Drive the overlay that sits on the picture.
+     *
+     * Deliberately mirrors what Tesla's own viewer shows, and nothing more:
+     * gear, brake, blinkers, speed, steering angle, accelerator travel, and an
+     * Autopilot banner when it is engaged. The detailed panel keeps the rest.
+     */
+    updateDrivingOverlay(d) {
+        const o = this.sei || (this.sei = {
+            root: document.getElementById('seiOverlay'),
+            gear: document.getElementById('seiGear'),
+            brake: document.getElementById('seiBrake'),
+            left: document.getElementById('seiLeftSignal'),
+            right: document.getElementById('seiRightSignal'),
+            speed: document.getElementById('seiSpeed'),
+            unit: document.getElementById('seiSpeedUnit'),
+            steering: document.getElementById('seiSteering'),
+            accel: document.getElementById('seiAccelerator'),
+            accelFill: document.getElementById('seiAccelFill'),
+            autopilot: document.getElementById('seiAutopilot'),
+        });
+        if (!o.root) return;
+
+        if (!o.unit.dataset.bound) {
+            o.unit.dataset.bound = '1';
+            o.unit.onclick = () => {
+                this.speedUnit = this.speedUnit === 'mph' ? 'kmh' : 'mph';
+                try { localStorage.setItem('speedUnit', this.speedUnit); } catch { /* private mode */ }
+            };
+            try { this.speedUnit = localStorage.getItem('speedUnit') || 'kmh'; } catch { this.speedUnit = 'kmh'; }
+        }
+
+        o.root.classList.remove('sei-overlay--hidden');
+        o.root.setAttribute('aria-hidden', 'false');
+
+        const kmh = (d.vehicleSpeedMps || 0) * 3.6;
+        const mph = this.speedUnit === 'mph';
+        o.speed.textContent = String(Math.round(mph ? kmh * 0.621371 : kmh));
+        o.unit.textContent = mph ? 'mph' : 'km/h';
+
+        const gears = { GEAR_PARK: 'P', GEAR_DRIVE: 'D', GEAR_REVERSE: 'R', GEAR_NEUTRAL: 'N' };
+        o.gear.textContent = gears[d.gearState] || '-';
+
+        o.brake.classList.toggle('sei-brake--active', Boolean(d.brakeApplied));
+        o.brake.classList.toggle('sei-brake--inactive', !d.brakeApplied);
+
+        const hazard = d.blinkerOnLeft && d.blinkerOnRight;
+        o.left.classList.toggle('sei-blinker--inactive', !(d.blinkerOnLeft || hazard));
+        o.right.classList.toggle('sei-blinker--inactive', !(d.blinkerOnRight || hazard));
+
+        o.steering.style.transform = `rotate(${(d.steeringWheelAngle || 0).toFixed(1)}deg)`;
+
+        // Tesla reports the pedal as a fraction; older clips use 0-100.
+        const raw = d.acceleratorPedalPosition || 0;
+        const pedal = Math.max(0, Math.min(100, raw <= 1 ? raw * 100 : raw));
+        o.accelFill.style.height = `${pedal.toFixed(0)}%`;
+        o.accel.classList.toggle('sei-accel--inactive', pedal < 1);
+
+        const ap = d.autopilotState;
+        const engaged = ap && ap !== 'NONE' && ap !== 'UNKNOWN';
+        o.autopilot.hidden = !engaged;
+        if (engaged) {
+            const t = i18n[this.viewer.currentLanguage];
+            const names = { SELF_DRIVING: t.autopilotSelfDriving, AUTOSTEER: t.autopilotAutosteer, TACC: t.autopilotTACC };
+            o.autopilot.textContent = names[ap] || ap;
+        }
+        o.gear.classList.toggle('sei-gear-text--autopilot', Boolean(engaged));
+        o.steering.classList.toggle('sei-steering-icon--autosteer', Boolean(engaged));
+    }
+
+    hideDrivingOverlay() {
+        const root = document.getElementById('seiOverlay');
+        if (root) {
+            root.classList.add('sei-overlay--hidden');
+            root.setAttribute('aria-hidden', 'true');
+        }
+    }
+
     updateUIStatus() {
         if (!this.dom.loading) return;
         this.dom.loading.style.display = this.isLoading ? 'block' : 'none';
@@ -1524,6 +1602,8 @@ class MetadataManager {
         
         const d = bestMatch.data;
         const v = this.dom.values;
+
+        this.updateDrivingOverlay(d);
         
         // Update speed (just the number, unit is separate)
         const speedKmh = (d.vehicleSpeedMps || 0) * 3.6;
@@ -1945,14 +2025,18 @@ class VideoListComponent {
         const thumbnailDiv = document.createElement('div');
         thumbnailDiv.className = 'video-thumbnail';
         if (event.thumbFile) {
-            const thumbUrl = getFileUrl(event.thumbFile);
             const img = document.createElement('img');
-            img.src = thumbUrl;
+            img.src = getFileUrl(event.thumbFile);
             img.alt = 'Preview';
+            img.loading = 'lazy';
             img.onload = () => URL.revokeObjectURL(img.src);
+            // Tesla encrypts thumb.png with a key section its own viewer cannot
+            // read either, so a thumbnail is not guaranteed. Fall back to the
+            // first frame of the clip, which is the picture anyway.
+            img.onerror = () => this.renderFrameThumbnail(event, thumbnailDiv, img);
             thumbnailDiv.appendChild(img);
         } else {
-            thumbnailDiv.innerHTML = `<div class="no-thumb"><svg class="icon" aria-hidden="true"><use href="#i-film-strip"/></svg>${this.getEventTypeLabel(event.eventType)}</div>`;
+            this.renderPlaceholder(event, thumbnailDiv);
         }
         const durationDiv = document.createElement('div');
         durationDiv.className = 'video-duration';
@@ -2002,6 +2086,65 @@ class VideoListComponent {
         };
 
         return card;
+    }
+
+    renderPlaceholder(event, container) {
+        container.querySelector('img')?.remove();
+        const placeholder = document.createElement('div');
+        placeholder.className = 'no-thumb';
+        placeholder.innerHTML =
+            `<svg class="icon" aria-hidden="true"><use href="#i-film-strip"/></svg>${this.getEventTypeLabel(event.eventType)}`;
+        container.prepend(placeholder);
+    }
+
+    /**
+     * Grab the first frame of a clip and use it as the preview.
+     *
+     * Only runs when the stored thumbnail is unusable, and only once the card
+     * is on screen: with a hundred events, decoding every clip up front would
+     * be pointless work.
+     */
+    renderFrameThumbnail(event, container, img) {
+        const segment = event.segments && event.segments[0];
+        const file = segment && segment.files &&
+            (segment.files.front || Object.values(segment.files).find(f => f && f.name.endsWith('.mp4')));
+        if (!file) return this.renderPlaceholder(event, container);
+
+        const draw = () => {
+            const video = document.createElement('video');
+            video.muted = true;
+            video.preload = 'metadata';
+            video.crossOrigin = 'anonymous';
+            const done = (ok) => {
+                video.removeAttribute('src');
+                video.load();
+                if (!ok) this.renderPlaceholder(event, container);
+            };
+            video.onloadeddata = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 320;
+                    canvas.height = video.videoHeight || 240;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    img.onerror = null;
+                    img.src = canvas.toDataURL('image/jpeg', 0.7);
+                    done(true);
+                } catch {
+                    done(false);
+                }
+            };
+            video.onerror = () => done(false);
+            video.src = getFileUrl(file);
+        };
+
+        if (!('IntersectionObserver' in window)) return draw();
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some(e => e.isIntersecting)) {
+                observer.disconnect();
+                draw();
+            }
+        }, { rootMargin: '200px' });
+        observer.observe(container);
     }
 
     /* The tag used to render `label.split(' ')[0]`, which worked only because
