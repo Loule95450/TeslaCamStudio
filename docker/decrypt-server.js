@@ -280,7 +280,23 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '127.0.0.1', () => {
     log.info(`[decrypt] listening on 127.0.0.1:${PORT}, footage root ${ROOT}`);
-    log.info(auth.configured
-        ? '[decrypt] Tesla credentials present'
-        : '[decrypt] no Tesla credentials: encrypted clips stay unplayable');
+    if (!auth.configured) {
+        log.info('[decrypt] no Tesla credentials: encrypted clips stay unplayable');
+        return;
+    }
+    // Say up front what was supplied and when it dies, so an expiry is not
+    // mistaken for a broken setup hours later.
+    const claims = inspectToken(process.env.TESLA_ACCESS_TOKEN || '');
+    if (claims.kind === 'jwt') {
+        log.info(`[decrypt] access token for '${claims.aud}', expires ${claims.expiresAt}`);
+        if (claims.expired) log.warn('[decrypt] that token has already expired');
+        if (claims.aud && !String(claims.aud).includes('dashcam')) {
+            log.warn(`[decrypt] audience '${claims.aud}' is not the dashcam service; Tesla will answer 401.`);
+            log.warn("[decrypt] the token must come from dashcam.tesla.com (localStorage key ROCP_token).");
+        }
+    }
+    if (!process.env.TESLA_REFRESH_TOKEN) {
+        log.info('[decrypt] no refresh token: decryption stops when this one expires.');
+        log.info('[decrypt] the dashcam client does not issue refresh tokens, so this is expected.');
+    }
 });

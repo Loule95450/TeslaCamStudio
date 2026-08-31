@@ -231,11 +231,19 @@ what follows `Authorization: Bearer `.
 
 Either way it goes in `TESLA_ACCESS_TOKEN`, and it expires after a few hours.
 
-For something longer lived, take the refresh token from the same
-`localStorage` (`ROCP_refreshToken`) and set `TESLA_REFRESH_TOKEN` instead. The
-container renews the access token itself against the `dashcam` client. Tesla
-rotates refresh tokens on use, so mount `/config` on a writable volume or the
-rotation is lost on the next restart.
+**There is no longer-lived option.** The `dashcam` client does not request the
+`offline_access` scope, so Tesla issues no refresh token for it: the site's
+storage holds `ROCP_token` and `ROCP_idToken` but no `ROCP_refreshToken`.
+Decryption therefore lasts as long as one access token, a few hours, and then
+the token has to be replaced. `ROCP_tokenExpire` in the same storage is the
+expiry as a Unix timestamp, and the container logs it at startup.
+
+`TESLA_REFRESH_TOKEN` and the `TESLA_CLIENT_ID` / `TESLA_SCOPE` /
+`TESLA_TOKEN_URL` overrides remain for the day that changes, or for a client
+that does issue one.
+
+The value may be pasted as it appears in the storage view: surrounding quotes
+and a leading `Bearer ` are stripped.
 
 #### When it does not work
 

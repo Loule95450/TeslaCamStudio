@@ -29,15 +29,35 @@ const SCOPE = process.env.TESLA_SCOPE || 'openid profile email employee';
 const REDIRECT_URI = process.env.TESLA_REDIRECT_URI || 'https://dashcam.tesla.com/callback';
 const EXPIRY_MARGIN_MS = 60_000;
 
+/**
+ * Tidy up a pasted token.
+ *
+ * localStorage holds it JSON-encoded, so copying it out of the DevTools
+ * storage view brings the quotes along, and people reasonably paste the whole
+ * `Authorization` value including "Bearer ". Both would otherwise fail as an
+ * opaque 401.
+ */
+function normaliseToken(value) {
+    if (!value) return null;
+    let t = String(value).trim();
+    if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1);
+    if (/^bearer\s+/i.test(t)) t = t.replace(/^bearer\s+/i, '');
+    return t.trim() || null;
+}
+
 class TeslaAuth {
     constructor({ refreshToken, accessToken, storePath, log = console }) {
+        refreshToken = normaliseToken(refreshToken);
+        accessToken = normaliseToken(accessToken);
         this.seedRefreshToken = refreshToken || null;
         this.storePath = storePath || '/config/tesla-token.json';
         this.log = log;
         this.accessToken = accessToken || null;
-        // An access token supplied directly has an unknown lifetime; assume it
-        // is already close to expiry so the first failure triggers a refresh.
-        this.accessTokenExpiry = accessToken ? Date.now() + 5 * 60_000 : 0;
+        this.accessTokenExpiry = 0;
+        if (accessToken) {
+            const { exp } = decodeClaims(accessToken) || {};
+            this.accessTokenExpiry = exp ? exp * 1000 : Date.now() + 5 * 60_000;
+        }
         this.refreshing = null;
     }
 
@@ -134,11 +154,20 @@ class TeslaAuth {
  * expiry, and the claims say which. Never returns the signature, and callers
  * must only log `aud`, `iss` and `exp`: the rest can identify the account.
  */
-function inspectToken(token) {
+function decodeClaims(token) {
     try {
         const [, payload] = String(token).split('.');
-        if (!payload) return { kind: 'opaque, not a JWT' };
-        const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        if (!payload) return null;
+        return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    } catch {
+        return null;
+    }
+}
+
+function inspectToken(token) {
+    try {
+        const claims = decodeClaims(token);
+        if (!claims) return { kind: 'opaque, not a JWT' };
         return {
             kind: 'jwt',
             aud: claims.aud,
@@ -152,4 +181,4 @@ function inspectToken(token) {
     }
 }
 
-module.exports = { TeslaAuth, inspectToken, TOKEN_URL, CLIENT_ID, SCOPE, REDIRECT_URI };
+module.exports = { TeslaAuth, inspectToken, normaliseToken, TOKEN_URL, CLIENT_ID, SCOPE, REDIRECT_URI };
