@@ -3612,12 +3612,14 @@ body:not(.dark-theme) .sei-overlay {
 
 .sei-indicator--gray { background: var(--sei-indicator-bg); }
 
+/* Tesla's own pedal renderings, extracted from the sprite their viewer ships.
+   They are bitmaps, so they do not take a colour: the state is carried by the
+   indicator's background, exactly as it is on their site. */
 .sei-indicator-img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    padding: 3px;
-    fill: currentColor;
+    padding: 2px;
 }
 
 .sei-gear-text {
