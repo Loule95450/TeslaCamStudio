@@ -144,6 +144,22 @@ nginx exposes the mount as a JSON directory listing, and the frontend walks it
 to build the clip list. Video is served with byte-range support, so seeking and
 scrubbing work without downloading whole files.
 
+### If no clips show up
+
+The app tells you what it found at `/teslacam`. The most common cause is a host
+path that does not exist: **Docker does not fail on a bad bind-mount source, it
+silently creates an empty directory there and mounts that**, so the container
+sees an empty volume. Check the left side of your `volumes:` mapping first.
+
+```bash
+docker exec teslacam-studio ls /teslacam
+```
+
+That should list `RecentClips`, `SavedClips` and `SentryClips`. If it is empty,
+the host path is wrong. If it errors with permission denied, the folder is not
+readable by the container: either `chmod o+rx` the folder, or run the container
+as its owner with `user: "UID:GID"`.
+
 ### 🔐 Authentication
 
 `AUTH_USER` and `AUTH_PASSWORD` put the whole site behind HTTP basic auth,

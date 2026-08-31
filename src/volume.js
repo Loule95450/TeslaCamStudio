@@ -76,16 +76,25 @@ async function listVolumeDirectory(url) {
     try {
         response = await fetch(url, { headers: { Accept: 'application/json' } });
     } catch {
-        return null; // not served, or the network is gone
+        return { status: 'unreachable', entries: null };
     }
-    if (!response.ok) return null;
-    if (!/json/i.test(response.headers.get('content-type') || '')) return null;
-
+    if (response.status === 403) {
+        // Mounted, but the nginx worker cannot read it. Common on a NAS where
+        // the shared folder is 0700 and owned by a uid the container is not.
+        return { status: 'forbidden', entries: null };
+    }
+    if (!response.ok) {
+        return { status: 'unreachable', entries: null, code: response.status };
+    }
+    if (!/json/i.test(response.headers.get('content-type') || '')) {
+        return { status: 'unreachable', entries: null };
+    }
     try {
         const entries = await response.json();
-        return Array.isArray(entries) ? entries : null;
+        if (!Array.isArray(entries)) return { status: 'unreachable', entries: null };
+        return { status: 'ok', entries };
     } catch {
-        return null; // autoindex off, or a listing we cannot parse
+        return { status: 'unreachable', entries: null };
     }
 }
 
@@ -110,8 +119,9 @@ async function mapWithConcurrency(items, limit, worker) {
 async function collectVolumeFiles(url, relativePath, depth = 0) {
     if (depth > VOLUME_MAX_DEPTH) return [];
 
-    const entries = await listVolumeDirectory(url);
-    if (!entries) return [];
+    const listing = await listVolumeDirectory(url);
+    if (listing.status !== 'ok') return [];
+    const entries = listing.entries;
 
     const files = [];
     const directories = [];
@@ -142,43 +152,54 @@ async function collectVolumeFiles(url, relativePath, depth = 0) {
 }
 
 /**
- * Is a TeslaCam volume mounted and browsable?
+ * Work out what is actually at /teslacam, and say so precisely.
  *
- * Accepts either layout: the mount is the TeslaCam folder itself, or it holds
- * a TeslaCam folder. Returns the URL and label of the folder to walk, or null.
+ * Every failure mode used to look identical from the browser (all of them
+ * return HTTP 200 with valid JSON), so a wrong mount, an unreadable mount and
+ * no mount at all were indistinguishable and fell back silently to the folder
+ * picker. This reports which one it is.
+ *
+ * @returns {Promise<{status: string, url?: string, label?: string, found?: string[]}>}
+ *   status is one of: ok | forbidden | empty | not-teslacam | unreachable
  */
-async function detectTeslaCamVolume() {
-    const entries = await listVolumeDirectory(VOLUME_ROOT);
-    if (!entries) return null;
+async function probeTeslaCamVolume() {
+    const root = await listVolumeDirectory(VOLUME_ROOT);
+    if (root.status !== 'ok') return { status: root.status };
 
-    const names = entries.filter((e) => e && e.type === 'directory').map((e) => e.name);
+    const dirs = root.entries.filter((e) => e && e.type === 'directory').map((e) => e.name);
+    const all = root.entries.filter((e) => e && e.name).map((e) => e.name);
 
-    if (names.some((name) => TESLACAM_SUBFOLDERS.includes(name))) {
-        return { url: VOLUME_ROOT, label: 'TeslaCam' };
+    if (dirs.some((name) => TESLACAM_SUBFOLDERS.includes(name))) {
+        return { status: 'ok', url: VOLUME_ROOT, label: 'TeslaCam' };
     }
 
     // Mounted one level up: /teslacam/TeslaCam/RecentClips/...
-    const nested = names.find((name) => name === 'TeslaCam');
-    if (nested) {
-        const nestedUrl = `${VOLUME_ROOT}${encodeURIComponent(nested)}/`;
-        const nestedEntries = await listVolumeDirectory(nestedUrl);
-        if (nestedEntries && nestedEntries.some((e) => e && TESLACAM_SUBFOLDERS.includes(e.name))) {
-            return { url: nestedUrl, label: 'TeslaCam' };
+    if (dirs.includes('TeslaCam')) {
+        const nestedUrl = `${VOLUME_ROOT}TeslaCam/`;
+        const nested = await listVolumeDirectory(nestedUrl);
+        if (nested.status === 'ok' &&
+            nested.entries.some((e) => e && TESLACAM_SUBFOLDERS.includes(e.name))) {
+            return { status: 'ok', url: nestedUrl, label: 'TeslaCam' };
         }
     }
 
-    return null;
+    if (all.length === 0) return { status: 'empty' };
+    return { status: 'not-teslacam', found: all.slice(0, 8) };
 }
 
 /**
  * Full discovery pass.
- * @returns {Promise<VolumeFile[]|null>} null when no volume is mounted.
+ * @returns {Promise<{status: string, files?: VolumeFile[], found?: string[]}>}
  */
 async function loadTeslaCamVolume() {
-    const root = await detectTeslaCamVolume();
-    if (!root) return null;
+    const probe = await probeTeslaCamVolume();
+    if (probe.status !== 'ok') {
+        console.warn(`[volume] ${VOLUME_ROOT} probe: ${probe.status}`,
+                     probe.found ? `- found instead: ${probe.found.join(', ')}` : '');
+        return probe;
+    }
 
-    const files = await collectVolumeFiles(root.url, root.label);
-    console.log(`[volume] ${files.length} files discovered under ${root.url}`);
-    return files;
+    const files = await collectVolumeFiles(probe.url, probe.label);
+    console.log(`[volume] ${files.length} files discovered under ${probe.url}`);
+    return { status: files.length ? 'ok' : 'no-clips', files };
 }

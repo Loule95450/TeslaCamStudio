@@ -116,7 +116,11 @@ const i18n = {
         ffmpegMergingGrid: "FFmpeg Merging Grid Video...",
         generatingOverlays: "Generating metadata overlays...",
         generatingOverlay: "Generating overlay",
-        volumeEmpty: "No clips found in the mounted volume. Check that your TeslaCam folder - the one containing RecentClips, SavedClips and SentryClips - is mounted at /teslacam.",
+        volumeEmpty: "Nothing is mounted at /teslacam, or the folder is empty. Note that Docker silently creates an empty directory when the host path in your volume mapping does not exist, so check that path first.",
+        volumeForbidden: "The volume is mounted but the container cannot read it. Give the folder read and execute permission for others (chmod o+rx), or run the container as the folder's owner with user: \"UID:GID\".",
+        volumeWrongFolder: "The mounted folder is not a TeslaCam folder: it has no RecentClips, SavedClips or SentryClips inside. Found instead:",
+        volumeNoClips: "The TeslaCam folder was found, but it contains no clips.",
+        volumeUnreachable: "Could not read /teslacam. The container may not be serving the volume.",
         volumeSource: "Reading from the mounted volume"
     },
     fr: {
@@ -236,7 +240,11 @@ const i18n = {
         ffmpegMergingGrid: "Fusion de la mosaïque FFmpeg...",
         generatingOverlays: "Génération des incrustations...",
         generatingOverlay: "Génération de l'incrustation",
-        volumeEmpty: "Aucun clip trouvé dans le volume monté. Vérifiez que votre dossier TeslaCam - celui qui contient RecentClips, SavedClips et SentryClips - est bien monté sur /teslacam.",
+        volumeEmpty: "Rien n'est monté sur /teslacam, ou le dossier est vide. Attention : quand le chemin hôte du volume n'existe pas, Docker crée silencieusement un dossier vide et le monte. Vérifiez ce chemin en premier.",
+        volumeForbidden: "Le volume est monté mais le conteneur ne peut pas le lire. Donnez les droits de lecture et d'exécution aux autres (chmod o+rx), ou lancez le conteneur sous l'utilisateur propriétaire avec user: \"UID:GID\".",
+        volumeWrongFolder: "Le dossier monté n'est pas un dossier TeslaCam : il ne contient ni RecentClips, ni SavedClips, ni SentryClips. Trouvé à la place :",
+        volumeNoClips: "Le dossier TeslaCam a été trouvé, mais il ne contient aucun clip.",
+        volumeUnreachable: "Impossible de lire /teslacam. Le conteneur ne sert peut-être pas le volume.",
         volumeSource: "Lecture depuis le volume monté"
     }
 };
@@ -7234,15 +7242,21 @@ class TeslaCamViewer {
     async bootstrapSource() {
         this.isVolumeMode = false;
         try {
-            const files = await loadTeslaCamVolume();
-            if (files) {
+            const result = await loadTeslaCamVolume();
+
+            if (result.status === 'ok') {
                 this.isVolumeMode = true;
                 document.body.classList.add('volume-mode');
-                if (files.length) {
-                    await this.handleFolderSelection(files);
-                } else {
-                    this.showVolumeEmptyMessage();
-                }
+                await this.handleFolderSelection(result.files);
+                return;
+            }
+
+            // A volume route that answers but holds the wrong thing is still
+            // volume mode: showing "plug in your USB drive" would be a lie.
+            if (result.status !== 'unreachable') {
+                this.isVolumeMode = true;
+                document.body.classList.add('volume-mode');
+                this.showVolumeProblem(result);
                 return;
             }
         } catch (e) {
@@ -7251,10 +7265,25 @@ class TeslaCamViewer {
         this.loadLastTeslaCamPath();
     }
 
-    showVolumeEmptyMessage() {
-        const translations = i18n[this.currentLanguage];
+    showVolumeProblem(result) {
+        const t = i18n[this.currentLanguage];
+        const messages = {
+            'forbidden': t.volumeForbidden,
+            'empty': t.volumeEmpty,
+            'not-teslacam': t.volumeWrongFolder,
+            'no-clips': t.volumeNoClips,
+            'unreachable': t.volumeUnreachable
+        };
+        const escape = (v) => String(v).replace(/[&<>"']/g, (c) =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const found = result.found && result.found.length
+            ? `<p class="note"><code>${result.found.map(escape).join('</code>, <code>')}</code></p>`
+            : '';
         this.videoListComponent.container.innerHTML =
-            `<div class="empty-state"><p>${translations.volumeEmpty}</p></div>`;
+            `<div class="empty-state help-text">
+                <p>${messages[result.status] || t.volumeUnreachable}</p>
+                ${found}
+            </div>`;
     }
 
     // Drop stale data and free memory
