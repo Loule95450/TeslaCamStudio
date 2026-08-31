@@ -9,9 +9,16 @@ services:
       # It is the folder that itself contains RecentClips / SavedClips /
       # SentryClips. Read-only: the app never writes to your footage.
       - ${TESLACAM_PATH:-./TeslaCam}:/teslacam:ro
+      # Keeps a rotated Tesla refresh token across restarts.
+      - ./teslacam-config:/config
     environment:
       # Leave these unset and the site is public to anyone who can reach the
       # port - including your GPS track. Set them.
       - AUTH_USER=${AUTH_USER:-}
       - AUTH_PASSWORD=${AUTH_PASSWORD:-}
+      # Optional: decrypt clips written by vehicle software 2026.20 and later.
+      # The token must come from dashcam.tesla.com itself (see the README); a
+      # third-party Tesla auth app issues a different audience and gets a 401.
+      - TESLA_ACCESS_TOKEN=${TESLA_ACCESS_TOKEN:-}
+      - TESLA_REFRESH_TOKEN=${TESLA_REFRESH_TOKEN:-}
     restart: unless-stopped

@@ -20,9 +20,15 @@
 const fs = require('fs');
 const path = require('path');
 
-const TOKEN_URL = 'https://auth.tesla.com/oauth2/v3/token';
-const CLIENT_ID = 'ownerapi';
-const SCOPE = 'openid email offline_access';
+const TOKEN_URL = process.env.TESLA_TOKEN_URL || 'https://auth.tesla.com/oauth2/v3/token';
+const CLIENT_ID = process.env.TESLA_CLIENT_ID || 'ownerapi';
+const SCOPE = process.env.TESLA_SCOPE || 'openid email offline_access';
+// dashcam.tesla.com does not accept a plain owner-api token: it wants its own
+// audience. Configurable because the right value is not documented anywhere,
+// and an empty value omits the parameter entirely.
+const AUDIENCE = process.env.TESLA_AUDIENCE === undefined
+    ? 'https://dashcam.tesla.com'
+    : process.env.TESLA_AUDIENCE;
 const EXPIRY_MARGIN_MS = 60_000;
 
 class TeslaAuth {
@@ -90,6 +96,7 @@ class TeslaAuth {
                 client_id: CLIENT_ID,
                 refresh_token: refreshToken,
                 scope: SCOPE,
+                ...(AUDIENCE ? { audience: AUDIENCE } : {}),
             }),
         });
 
@@ -122,4 +129,29 @@ class TeslaAuth {
     }
 }
 
-module.exports = { TeslaAuth, TOKEN_URL, CLIENT_ID, SCOPE };
+/**
+ * Read the unsigned claims of a JWT, for diagnostics only.
+ *
+ * A 401 from Tesla is nearly always an audience mismatch rather than an
+ * expiry, and the claims say which. Never returns the signature, and callers
+ * must only log `aud`, `iss` and `exp`: the rest can identify the account.
+ */
+function inspectToken(token) {
+    try {
+        const [, payload] = String(token).split('.');
+        if (!payload) return { kind: 'opaque, not a JWT' };
+        const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        return {
+            kind: 'jwt',
+            aud: claims.aud,
+            iss: claims.iss,
+            scp: claims.scp,
+            expiresAt: claims.exp ? new Date(claims.exp * 1000).toISOString() : undefined,
+            expired: claims.exp ? claims.exp * 1000 < Date.now() : undefined,
+        };
+    } catch {
+        return { kind: 'unreadable' };
+    }
+}
+
+module.exports = { TeslaAuth, inspectToken, TOKEN_URL, CLIENT_ID, SCOPE, AUDIENCE };

@@ -6393,9 +6393,6 @@ class TeslaCamViewer {
         
         console.log('[handleFolderSelection] Total files:', this.allFiles.length);
         // Log sample paths for debugging
-        this.allFiles.slice(0, 5).forEach(f => {
-            console.log('[handleFolderSelection] File:', f.name, 'webkitRelativePath:', f.webkitRelativePath);
-        });
 
         const hasTeslaCamSubfolders = this.allFiles.some(file => 
             file.webkitRelativePath.includes('RecentClips/') ||
@@ -6413,8 +6410,12 @@ class TeslaCamViewer {
             return;
         }
 
+        // Must run before processFiles: the whole encrypted tree needs routing
+        // through the sidecar, event.json included, or it parses as ciphertext.
+        const encryption = await markEncryptedFiles(this.allFiles);
+
         this.eventGroups = await this.processFiles(this.allFiles);
-        await markEncryptedEvents(this.eventGroups);
+        await markEncryptedEvents(this.eventGroups, encryption.decryptable);
         console.log('[handleFolderSelection] eventGroups:', this.eventGroups.length);
         this.filterAndRender();
     }
@@ -6451,8 +6452,12 @@ class TeslaCamViewer {
             return;
         }
 
+        // Must run before processFiles: the whole encrypted tree needs routing
+        // through the sidecar, event.json included, or it parses as ciphertext.
+        const encryption = await markEncryptedFiles(this.allFiles);
+
         this.eventGroups = await this.processFiles(this.allFiles);
-        await markEncryptedEvents(this.eventGroups);
+        await markEncryptedEvents(this.eventGroups, encryption.decryptable);
         this.filterAndRender();
     }
 
@@ -6478,11 +6483,9 @@ class TeslaCamViewer {
         console.log('[processFiles] Found event.json files:', jsonFiles.length);
         for (const jsonFile of jsonFiles) {
             const eventId = jsonFile.webkitRelativePath.substring(0, jsonFile.webkitRelativePath.lastIndexOf('/'));
-            console.log('[processFiles] Processing event.json, eventId:', eventId, 'exists in map:', eventMap.has(eventId));
             if (eventMap.has(eventId)) {
                 try {
                     const textContent = await jsonFile.text();
-                    console.log('[processFiles] event.json content preview:', textContent.substring(0, 200));
                     const eventData = JSON.parse(textContent);
                     const eventObj = eventMap.get(eventId);
                     eventObj.city = eventData.city;
@@ -6490,9 +6493,12 @@ class TeslaCamViewer {
                     eventObj.eventTimestamp = eventData.timestamp;
                     eventObj.lat = eventData.est_lat;
                     eventObj.lon = eventData.est_lon;
-                    console.log('[processFiles] Parsed city:', eventObj.city, 'street:', eventObj.street);
                 } catch (e) {
-                    console.error(`Error parsing event.json for ${eventId}:`, e);
+                    // Expected while an encrypted event.json cannot be decrypted:
+                    // the event still works, it just has no city or coordinates.
+                    if (!jsonFile.useDecrypt) {
+                        console.warn(`[processFiles] unreadable event.json for ${eventId}: ${e.message}`);
+                    }
                 }
             }
         }
@@ -7175,8 +7181,12 @@ class TeslaCamViewer {
             this.cleanupOldData();
             
             this.allFiles = files;
-            this.eventGroups = await this.processFiles(this.allFiles);
-        await markEncryptedEvents(this.eventGroups);
+            // Must run before processFiles: the whole encrypted tree needs routing
+        // through the sidecar, event.json included, or it parses as ciphertext.
+        const encryption = await markEncryptedFiles(this.allFiles);
+
+        this.eventGroups = await this.processFiles(this.allFiles);
+        await markEncryptedEvents(this.eventGroups, encryption.decryptable);
             console.log('[loadDirectoryFromHandle] eventGroups:', this.eventGroups.length);
             this.filterAndRender();
             

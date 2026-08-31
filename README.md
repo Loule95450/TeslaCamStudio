@@ -180,6 +180,70 @@ container, and nginx's master process then cannot bind port 80 or write its own
 configuration, so the container exits immediately. `PUID`/`PGID` only change the
 worker processes, which is what actually reads your footage.
 
+### 🔓 Encrypted clips
+
+Vehicle software 2026.20 encrypts dashcam footage on the USB drive by default,
+writing it into an `EncryptedClips/` tree. The clips keep the `.mp4` extension
+but no player can open them: the bytes are AES-128-CBC, and the per-file keys
+are held by Tesla against your account rather than stored on the drive.
+
+Without credentials the app detects those clips, badges them, and explains what
+they are instead of showing a dead player. Two ways to make them playable:
+
+**Turn encryption off in the car** (affects future recordings only):
+Controls > Safety > Encrypt Dashcam Recordings.
+
+**Or let the container decrypt them.** It asks Tesla for the key and streams a
+plain MP4 to your browser. Only file identifiers leave your machine; the
+footage never does, and the token stays server-side.
+
+```yaml
+    environment:
+      - TESLA_ACCESS_TOKEN=eyJhbGciOi...
+    volumes:
+      - ./teslacam-config:/config      # so a rotated token survives a restart
+```
+
+#### Getting the token
+
+The token has to come from **dashcam.tesla.com itself**. A token from a
+third-party Tesla auth app (the owner-api audience) is rejected with HTTP 401:
+the dashcam service issues its own.
+
+1. Open <https://dashcam.tesla.com> and sign in to your Tesla account.
+2. Open DevTools (F12) and select the **Network** tab.
+3. Load a clip in the page so it makes an API call.
+4. Click any request to `/api/1/`, open **Headers**, and find
+   `Authorization: Bearer eyJ...`.
+5. Copy everything after `Bearer ` into `TESLA_ACCESS_TOKEN`.
+
+Treat it like a password. **It expires after a few hours**, so this is a
+per-session affair rather than a set-and-forget one.
+
+`TESLA_REFRESH_TOKEN` exists for the long-lived case, along with
+`TESLA_AUDIENCE`, `TESLA_CLIENT_ID` and `TESLA_SCOPE` to aim the refresh at the
+right service. Be warned that no public documentation confirms which audience
+dashcam.tesla.com accepts, so the refresh path may not work at all: the
+access-token route above is the one known to.
+
+#### When it does not work
+
+```bash
+docker compose logs 2>&1 | grep -E '\[decrypt\]|\[auth\]'
+```
+
+`HTTP 401` twice means the token is not accepted, and the log then prints the
+token's `aud` claim so you can see which service it was minted for.
+
+To check a real file against the layout the decryption expects, without moving
+any footage anywhere:
+
+```bash
+curl -s -u USER:PASSWORD "http://localhost:8188/decrypt/inspect/EncryptedClips/RecentClips/SOME-CLIP-front.mp4"
+```
+
+`vinLooksValid: true` and `publicKeyFirstByte: 0x4` mean the offsets line up.
+
 ### 🔐 Authentication
 
 `AUTH_USER` and `AUTH_PASSWORD` put the whole site behind HTTP basic auth,

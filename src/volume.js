@@ -288,39 +288,55 @@ async function isDecryptionAvailable() {
     }
 }
 
-async function markEncryptedEvents(events) {
-    const targets = events
-        .map((event) => {
-            const segment = event.segments && event.segments[0];
-            const file = segment && segment.files &&
-                Object.values(segment.files).find((f) => f && f.name.endsWith('.mp4'));
-            return file ? { event, file } : null;
-        })
-        .filter(Boolean);
+/**
+ * Flag every file that lives in the encrypted tree, before anything is grouped.
+ *
+ * This has to happen before event.json is read: Tesla encrypts the whole tree,
+ * not just the video, so the sidecar has to serve the JSON and the thumbnails
+ * too or they come back as ciphertext.
+ *
+ * @returns {Promise<{encrypted: number, decryptable: boolean}>}
+ */
+async function markEncryptedFiles(files) {
+    const encrypted = files.filter((f) => f.webkitRelativePath.includes(`/${ENCRYPTED_DIR}/`));
+    if (!encrypted.length) return { encrypted: 0, decryptable: false };
 
-    await mapWithConcurrency(targets, VOLUME_FETCH_CONCURRENCY, async ({ event, file }) => {
-        // Living under EncryptedClips/ settles it without reading anything.
+    const decryptable = await isDecryptionAvailable();
+    if (decryptable) {
+        for (const file of encrypted) file.useDecrypt = true;
+    }
+    console.warn(`[encryption] ${encrypted.length} of ${files.length} files are encrypted; ` +
+                 (decryptable ? 'reading them through the sidecar' : 'no decryption configured'));
+    return { encrypted: encrypted.length, decryptable };
+}
+
+/**
+ * Tag the grouped events, so the list can show which ones are encrypted and
+ * playEvent knows whether it can play them.
+ */
+async function markEncryptedEvents(events, decryptable) {
+    let count = 0;
+    for (const event of events) {
+        const segment = (event.segments || [])[0];
+        const file = segment && segment.files &&
+            Object.values(segment.files).find((f) => f && f.name.endsWith('.mp4'));
+        if (!file) continue;
+
         if (file.webkitRelativePath.includes(`/${ENCRYPTED_DIR}/`)) {
             event.encrypted = true;
-            return;
-        }
-        event.encrypted = await isClipEncrypted(file);
-    });
-
-    const count = events.filter((e) => e.encrypted).length;
-    if (!count) return 0;
-
-    const canDecrypt = await isDecryptionAvailable();
-    for (const event of events.filter((e) => e.encrypted)) {
-        event.decryptable = canDecrypt;
-        if (!canDecrypt) continue;
-        for (const segment of event.segments || []) {
-            for (const file of Object.values(segment.files || {})) {
-                if (file && file.name.endsWith('.mp4')) file.useDecrypt = true;
+        } else {
+            event.encrypted = await isClipEncrypted(file);
+            // Encrypted but outside the usual tree: still route it if we can.
+            if (event.encrypted && decryptable) {
+                for (const seg of event.segments || []) {
+                    for (const f of Object.values(seg.files || {})) if (f) f.useDecrypt = true;
+                }
             }
         }
+        if (event.encrypted) {
+            event.decryptable = Boolean(decryptable);
+            count++;
+        }
     }
-    console.warn(`[encryption] ${count} of ${events.length} events are encrypted; ` +
-                 (canDecrypt ? 'decrypting them through the sidecar' : 'no decryption configured'));
     return count;
 }

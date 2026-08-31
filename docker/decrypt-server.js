@@ -21,7 +21,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const C = require('./tesla-crypto.js');
-const { TeslaAuth } = require('./tesla-auth.js');
+const { TeslaAuth, inspectToken } = require('./tesla-auth.js');
 
 const PORT = Number(process.env.DECRYPT_PORT || 8189);
 const ROOT = process.env.TESLACAM_ROOT || '/teslacam';
@@ -91,6 +91,16 @@ async function fetchKey(meta) {
     if (response.status === 401) {
         auth.invalidate();               // token may have expired mid-flight
         response = await request();
+        if (response.status === 401) {
+            // Twice in a row is not an expiry. Report what the token actually
+            // claims, since the usual cause is an audience Tesla will not take.
+            const claims = inspectToken(await auth.getAccessToken().catch(() => ''));
+            log.error(`[auth] Tesla rejected the token twice. Claims: ${JSON.stringify({
+                kind: claims.kind, aud: claims.aud, iss: claims.iss, expired: claims.expired })}`);
+            log.error('[auth] dashcam.tesla.com issues its own token; an owner-api token is not accepted.');
+            log.error('[auth] Sign in at dashcam.tesla.com, copy the Bearer token from DevTools,');
+            log.error('[auth] and set it as TESLA_ACCESS_TOKEN.');
+        }
     }
     if (!response.ok) {
         let detail = '';
