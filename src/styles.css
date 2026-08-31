@@ -3486,3 +3486,10 @@ button:not(:disabled):active,
 @media (hover: none) {
     .hide-clip-btn { opacity: 1; }
 }
+
+/* A clip the sidecar can decrypt is informational, not a blocker. */
+.encrypted-badge.is-decrypted {
+    border-color: var(--border-secondary);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}

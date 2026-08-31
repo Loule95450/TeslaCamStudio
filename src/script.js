@@ -127,6 +127,8 @@ const i18n = {
         encryptedFixNew: "For future recordings: turn off Controls > Safety > Encrypt Dashcam Recordings in the car.",
         encryptedFixExisting: "For clips you already have: decrypt them at dashcam.tesla.com, then copy the decrypted files back to this folder.",
         encryptedBadge: "Encrypted",
+        decryptedBadge: "Decrypted",
+        decryptedTitle: "Encrypted by the car, decrypted on the fly by this server",
         hideEncrypted: "Hide encrypted clips",
         hideClip: "Hide this clip",
         showHidden: "hidden - show all",
@@ -261,6 +263,8 @@ const i18n = {
         encryptedFixNew: "Pour les prochains enregistrements : désactivez Commandes > Sécurité > Chiffrer les enregistrements de la Dashcam dans la voiture.",
         encryptedFixExisting: "Pour les clips déjà enregistrés : déchiffrez-les sur dashcam.tesla.com, puis recopiez les fichiers déchiffrés dans ce dossier.",
         encryptedBadge: "Chiffré",
+        decryptedBadge: "Déchiffré",
+        decryptedTitle: "Chiffré par la voiture, déchiffré à la volée par ce serveur",
         hideEncrypted: "Masquer les clips chiffrés",
         hideClip: "Masquer ce clip",
         showHidden: "masqués - tout afficher",
@@ -284,9 +288,10 @@ function cameraLabel(camera, lang) {
 }
 
 function getFileUrl(file) {
-    // Served from the mounted Docker volume: the file *is* an URL.
+    // Served from the mounted Docker volume: the file *is* an URL. An encrypted
+    // clip is fetched from the sidecar, which streams it decrypted.
     if (file instanceof VolumeFile) {
-        return file.url;
+        return file.useDecrypt ? file.decryptUrl : file.url;
     }
     return URL.createObjectURL(file);
 }
@@ -1962,7 +1967,7 @@ class VideoListComponent {
 
         infoDiv.innerHTML = `
             <div class="video-time">
-                <span class="video-type-tag" title="${eventTypeLabel}" aria-label="${eventTypeLabel}">${this.getEventTypeIcon(event.eventType)}</span>${event.encrypted ? `<span class="encrypted-badge" title="${t.encryptedTitle}">${t.encryptedBadge}</span>` : ''}<button type="button" class="hide-clip-btn" title="${t.hideClip}" aria-label="${t.hideClip}"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+                <span class="video-type-tag" title="${eventTypeLabel}" aria-label="${eventTypeLabel}">${this.getEventTypeIcon(event.eventType)}</span>${event.encrypted ? `<span class="encrypted-badge${event.decryptable ? ' is-decrypted' : ''}" title="${event.decryptable ? t.decryptedTitle : t.encryptedTitle}">${event.decryptable ? t.decryptedBadge : t.encryptedBadge}</span>` : ''}<button type="button" class="hide-clip-btn" title="${t.hideClip}" aria-label="${t.hideClip}"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
                 ${cityHtml}${timeString}
             </div>
         `;
@@ -6575,9 +6580,10 @@ class TeslaCamViewer {
         const event = this.eventGroups.find(e => e.eventId === eventId);
         if (!event) return;
 
-        // Encrypted clips are not MP4 at all, so the player would just fail
-        // with an opaque decode error. Explain instead.
-        if (event.encrypted) {
+        // An encrypted clip is not MP4 at all, so without the decryption
+        // sidecar the player would fail with an opaque decode error. Explain
+        // instead. With the sidecar it plays like any other clip.
+        if (event.encrypted && !event.decryptable) {
             this.showEncryptedNotice();
             return;
         }

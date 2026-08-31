@@ -12,6 +12,7 @@
  */
 
 const VOLUME_ROOT = '/teslacam/';
+const DECRYPT_ROOT = '/decrypt/clip/';
 const VOLUME_MAX_DEPTH = 4;
 const VOLUME_FETCH_CONCURRENCY = 8;
 
@@ -36,6 +37,14 @@ class VolumeFile {
         this.size = size;
         this.lastModified = lastModified;
         this.type = VolumeFile.guessType(this.name);
+        // Set when the clip is encrypted and the sidecar can decrypt it; the
+        // player then fetches plaintext from there instead of the raw file.
+        this.useDecrypt = false;
+    }
+
+    /** Same clip, served decrypted by the sidecar. */
+    get decryptUrl() {
+        return DECRYPT_ROOT + this.url.slice(VOLUME_ROOT.length);
     }
 
     static guessType(name) {
@@ -254,6 +263,21 @@ async function isClipEncrypted(file) {
  * Probe one representative clip per event, a few at a time, and tag the event.
  * Encryption is a per-recording setting, so one segment answers for the event.
  */
+/**
+ * Is the decryption sidecar running with Tesla credentials?
+ * Absent credentials nginx has nothing to proxy to and answers 502.
+ */
+async function isDecryptionAvailable() {
+    try {
+        const response = await fetch('/decrypt/status', { headers: { Accept: 'application/json' } });
+        if (!response.ok) return false;
+        const body = await response.json();
+        return Boolean(body && body.configured);
+    } catch {
+        return false;
+    }
+}
+
 async function markEncryptedEvents(events) {
     const targets = events
         .map((event) => {
@@ -269,6 +293,19 @@ async function markEncryptedEvents(events) {
     });
 
     const count = events.filter((e) => e.encrypted).length;
-    if (count) console.warn(`[encryption] ${count} of ${events.length} events are encrypted clips`);
+    if (!count) return 0;
+
+    const canDecrypt = await isDecryptionAvailable();
+    for (const event of events.filter((e) => e.encrypted)) {
+        event.decryptable = canDecrypt;
+        if (!canDecrypt) continue;
+        for (const segment of event.segments || []) {
+            for (const file of Object.values(segment.files || {})) {
+                if (file && file.name.endsWith('.mp4')) file.useDecrypt = true;
+            }
+        }
+    }
+    console.warn(`[encryption] ${count} of ${events.length} events are encrypted; ` +
+                 (canDecrypt ? 'decrypting them through the sidecar' : 'no decryption configured'));
     return count;
 }
