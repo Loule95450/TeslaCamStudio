@@ -3493,3 +3493,42 @@ button:not(:disabled):active,
     background: var(--bg-tertiary);
     color: var(--text-secondary);
 }
+
+/* Pasting a fresh Tesla token, since one only lasts eight hours. */
+.token-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    width: min(100%, 34rem);
+    margin-top: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-primary);
+}
+
+.token-form input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+}
+
+.token-form button {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--text-on-button);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.token-form button:hover { background: var(--accent-hover); }
+.token-form .note { font-size: 0.8125rem; color: var(--text-tertiary); }
+.token-result:empty { display: none; }
+.token-result.is-ok { color: var(--success); }
+.token-result.is-error { color: var(--danger); }

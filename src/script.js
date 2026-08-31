@@ -127,6 +127,12 @@ const i18n = {
         encryptedFixNew: "For future recordings: turn off Controls > Safety > Encrypt Dashcam Recordings in the car.",
         encryptedFixExisting: "For clips you already have: decrypt them at dashcam.tesla.com, then copy the decrypted files back to this folder.",
         encryptedBadge: "Encrypted",
+        tokenPrompt: "Paste a token from dashcam.tesla.com to decrypt these clips.",
+        tokenPlaceholder: "Paste the token here",
+        tokenSave: "Use this token",
+        tokenOk: "Token accepted, valid until",
+        tokenBad: "Token refused:",
+        tokenHelp: "Sign in at dashcam.tesla.com, open DevTools, and copy the ROCP_token value from Local Storage.",
         decryptedBadge: "Decrypted",
         decryptedTitle: "Encrypted by the car, decrypted on the fly by this server",
         hideEncrypted: "Hide encrypted clips",
@@ -263,6 +269,12 @@ const i18n = {
         encryptedFixNew: "Pour les prochains enregistrements : désactivez Commandes > Sécurité > Chiffrer les enregistrements de la Dashcam dans la voiture.",
         encryptedFixExisting: "Pour les clips déjà enregistrés : déchiffrez-les sur dashcam.tesla.com, puis recopiez les fichiers déchiffrés dans ce dossier.",
         encryptedBadge: "Chiffré",
+        tokenPrompt: "Collez un token de dashcam.tesla.com pour déchiffrer ces clips.",
+        tokenPlaceholder: "Collez le token ici",
+        tokenSave: "Utiliser ce token",
+        tokenOk: "Token accepté, valide jusqu'au",
+        tokenBad: "Token refusé :",
+        tokenHelp: "Connectez-vous sur dashcam.tesla.com, ouvrez les DevTools, et copiez la valeur ROCP_token du Local Storage.",
         decryptedBadge: "Déchiffré",
         decryptedTitle: "Chiffré par la voiture, déchiffré à la volée par ce serveur",
         hideEncrypted: "Masquer les clips chiffrés",
@@ -7911,8 +7923,54 @@ class TeslaCamViewer {
             <ul>
                 <li>${t.encryptedFixNew}</li>
                 <li>${t.encryptedFixExisting}</li>
-            </ul>`;
+            </ul>
+            <form class="token-form" id="tokenForm">
+                <p>${t.tokenPrompt}</p>
+                <input type="password" id="tokenInput" placeholder="${t.tokenPlaceholder}"
+                       autocomplete="off" spellcheck="false">
+                <button type="submit">${t.tokenSave}</button>
+                <p class="note">${t.tokenHelp}</p>
+                <p class="token-result" id="tokenResult"></p>
+            </form>`;
+        panel.querySelector('#tokenForm').onsubmit = (e) => {
+            e.preventDefault();
+            this.submitDecryptionToken(panel.querySelector('#tokenInput'), panel.querySelector('#tokenResult'));
+        };
         panel.style.display = 'flex';
+    }
+
+    /**
+     * Hand a fresh Tesla token to the sidecar.
+     *
+     * The token only ever goes to our own server, which keeps it: it is never
+     * stored in the page and never displayed back.
+     */
+    async submitDecryptionToken(input, output) {
+        const t = i18n[this.currentLanguage];
+        const token = input.value.trim();
+        if (!token) return;
+        output.textContent = '...';
+        try {
+            const response = await fetch('/decrypt/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            });
+            const body = await response.json();
+            input.value = '';
+            if (!response.ok || !body.ok) {
+                output.textContent = `${t.tokenBad} ${body.error || response.status}`;
+                output.className = 'token-result is-error';
+                return;
+            }
+            output.textContent = `${t.tokenOk} ${new Date(body.expiresAt).toLocaleString()}`;
+            output.className = 'token-result is-ok';
+            // Re-run discovery so the clips become playable without a reload.
+            await this.bootstrapSource();
+        } catch (e) {
+            output.textContent = `${t.tokenBad} ${e.message}`;
+            output.className = 'token-result is-error';
+        }
     }
 
     hideEncryptedNotice() {

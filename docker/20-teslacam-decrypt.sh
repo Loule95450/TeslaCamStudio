@@ -1,13 +1,12 @@
 #!/bin/sh
-# Starts the decryption sidecar, but only when there is something to decrypt
-# with. Without credentials nothing is started and /decrypt/ answers 502, which
-# the app reads as "decryption unavailable" and falls back to explaining that
-# the clip is encrypted.
+# Starts the decryption sidecar.
 set -eu
 
+# The sidecar always runs, even with no credentials: a token can be pasted into
+# the running app, and that needs an endpoint to be listening. With nothing
+# configured it simply reports that it cannot decrypt yet.
 if [ -z "${TESLA_REFRESH_TOKEN:-}" ] && [ -z "${TESLA_ACCESS_TOKEN:-}" ]; then
-    echo "[teslacam] no TESLA_REFRESH_TOKEN: encrypted clips will stay unplayable"
-    exit 0
+    echo "[teslacam] no Tesla token set; paste one in the app to decrypt clips"
 fi
 
 STORE="${TESLA_TOKEN_STORE:-/config/tesla-token.json}"

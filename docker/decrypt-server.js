@@ -267,7 +267,23 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
 
     if (url.pathname === '/decrypt/status') {
-        return sendJson(res, 200, { configured: auth.configured });
+        return sendJson(res, 200, auth.status());
+    }
+    if (url.pathname === '/decrypt/token' && req.method === 'POST') {
+        // Behind the site's basic auth, like everything else here. The token is
+        // stored, never echoed back.
+        let body = '';
+        req.on('data', (c) => { body += c; if (body.length > 8192) req.destroy(); });
+        return req.on('end', () => {
+            try {
+                const { token } = JSON.parse(body || '{}');
+                const info = auth.setAccessToken(token);
+                keyCache.clear();
+                sendJson(res, 200, { ok: true, ...info });
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: e.message });
+            }
+        });
     }
     if (url.pathname.startsWith('/decrypt/clip/')) {
         return serveClip(req, res, url.pathname.slice('/decrypt/clip/'.length));

@@ -231,6 +231,11 @@ what follows `Authorization: Bearer `.
 
 Either way it goes in `TESLA_ACCESS_TOKEN`, and it expires after a few hours.
 
+**Paste it in the app instead.** Opening an encrypted clip shows a field for
+the token, so a fresh one can be handed over without editing this file or
+restarting anything. It goes straight to the container, is kept in `/config`,
+and is never stored in the browser or shown back.
+
 **There is no longer-lived option.** The `dashcam` client does not request the
 `offline_access` scope, so Tesla issues no refresh token for it: the site's
 storage holds `ROCP_token` and `ROCP_idToken` but no `ROCP_refreshToken`.
@@ -241,6 +246,12 @@ expiry as a Unix timestamp, and the container logs it at startup.
 `TESLA_REFRESH_TOKEN` and the `TESLA_CLIENT_ID` / `TESLA_SCOPE` /
 `TESLA_TOKEN_URL` overrides remain for the day that changes, or for a client
 that does issue one.
+
+The site itself gets a new token by replaying the whole authorization flow
+against an existing Tesla SSO session, in about three seconds and with no
+prompt. That is a browser session plus Akamai bot protection on the login
+endpoints, neither of which a container can stand in for, which is why the
+token is pasted rather than fetched.
 
 The value may be pasted as it appears in the storage view: surrounding quotes
 and a leading `Bearer ` are stripped.

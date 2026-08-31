@@ -54,6 +54,16 @@ class TeslaAuth {
         this.log = log;
         this.accessToken = accessToken || null;
         this.accessTokenExpiry = 0;
+        if (!this.accessToken) {
+            const stored = normaliseToken(this.readStoredAccessToken());
+            if (stored) {
+                const { exp } = decodeClaims(stored) || {};
+                if (!exp || exp * 1000 > Date.now()) {
+                    this.accessToken = stored;
+                    accessToken = stored;
+                }
+            }
+        }
         if (accessToken) {
             const { exp } = decodeClaims(accessToken) || {};
             this.accessTokenExpiry = exp ? exp * 1000 : Date.now() + 5 * 60_000;
@@ -138,6 +148,60 @@ class TeslaAuth {
         }
         this.log.info('[auth] access token renewed');
         return this.accessToken;
+    }
+
+    /**
+     * Replace the access token at runtime.
+     *
+     * The dashcam client issues no refresh token, so a token lasts eight hours
+     * and then has to be replaced by hand. Doing that through an endpoint
+     * beats editing the compose file and restarting the container.
+     */
+    setAccessToken(raw) {
+        const token = normaliseToken(raw);
+        if (!token) throw new Error('empty token');
+        const claims = decodeClaims(token);
+        if (!claims) throw new Error('that does not look like a JWT');
+        if (claims.exp && claims.exp * 1000 < Date.now()) {
+            throw new Error(`that token expired on ${new Date(claims.exp * 1000).toISOString()}`);
+        }
+        this.accessToken = token;
+        this.accessTokenExpiry = claims.exp ? claims.exp * 1000 : Date.now() + 8 * 3600_000;
+        this.persistAccessToken(token);
+        this.log.info(`[auth] access token replaced, expires ${new Date(this.accessTokenExpiry).toISOString()}`);
+        return { aud: claims.aud, expiresAt: new Date(this.accessTokenExpiry).toISOString() };
+    }
+
+    /** Keep it across restarts when /config is writable. */
+    persistAccessToken(token) {
+        try {
+            fs.mkdirSync(path.dirname(this.storePath), { recursive: true });
+            const current = (() => { try { return JSON.parse(fs.readFileSync(this.storePath, 'utf8')); } catch { return {}; } })();
+            fs.writeFileSync(this.storePath, JSON.stringify({ ...current, access_token: token }), { mode: 0o600 });
+        } catch (e) {
+            this.log.warn(`[auth] token not persisted (${e.code || e.message}); it will be lost on restart`);
+        }
+    }
+
+    readStoredAccessToken() {
+        try {
+            return JSON.parse(fs.readFileSync(this.storePath, 'utf8')).access_token || null;
+        } catch {
+            return null;
+        }
+    }
+
+    /** What the UI may know: never the token itself. */
+    status() {
+        const claims = this.accessToken ? decodeClaims(this.accessToken) : null;
+        return {
+            configured: Boolean(this.accessToken || this.currentRefreshToken()),
+            hasToken: Boolean(this.accessToken),
+            expiresAt: this.accessTokenExpiry ? new Date(this.accessTokenExpiry).toISOString() : null,
+            expired: this.accessTokenExpiry ? this.accessTokenExpiry < Date.now() : null,
+            audience: claims ? claims.aud : null,
+            canRefresh: Boolean(this.currentRefreshToken()),
+        };
     }
 
     /** Force a refresh once, for when the API rejects a token we thought was good. */
