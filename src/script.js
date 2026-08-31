@@ -122,6 +122,11 @@ const i18n = {
         volumeNoClips: "The TeslaCam folder was found, but it contains no clips.",
         volumeUnreachable: "Could not read /teslacam. The container may not be serving the volume.",
         volumeSource: "Reading from the mounted volume",
+        discovering: "Looking for clips...",
+        liveMap: "Map",
+        liveMapToggle: "Show the route on a map",
+        liveMapNoFix: "This clip carries no GPS position.",
+        liveMapOffline: "The map needs an internet connection for its tiles.",
         encryptedTitle: "This clip is encrypted",
         encryptedBody: "Since vehicle software 2026.20 your Tesla encrypts dashcam footage on the USB drive by default. The keys are held by Tesla against your account, not stored on the drive, so no local player can open these files.",
         encryptedFixNew: "For future recordings: turn off Controls > Safety > Encrypt Dashcam Recordings in the car.",
@@ -264,6 +269,11 @@ const i18n = {
         volumeNoClips: "Le dossier TeslaCam a été trouvé, mais il ne contient aucun clip.",
         volumeUnreachable: "Impossible de lire /teslacam. Le conteneur ne sert peut-être pas le volume.",
         volumeSource: "Lecture depuis le volume monté",
+        discovering: "Recherche des clips...",
+        liveMap: "Carte",
+        liveMapToggle: "Afficher le trajet sur une carte",
+        liveMapNoFix: "Ce clip ne contient aucune position GPS.",
+        liveMapOffline: "La carte a besoin d'une connexion internet pour ses tuiles.",
         encryptedTitle: "Ce clip est chiffré",
         encryptedBody: "Depuis la version 2026.20 du logiciel véhicule, votre Tesla chiffre par défaut les vidéos sur la clé USB. Les clés sont détenues par Tesla et liées à votre compte, elles ne sont pas sur la clé : aucun lecteur local ne peut donc ouvrir ces fichiers.",
         encryptedFixNew: "Pour les prochains enregistrements : désactivez Commandes > Sécurité > Chiffrer les enregistrements de la Dashcam dans la voiture.",
@@ -1256,7 +1266,6 @@ class MetadataManager {
         this.lastDetailData = null;
         
         this.dom = {
-            panel: document.getElementById('metadataPanel'),
             switchBtn: document.getElementById('metaSwitchBtn'),
             detailBtn: document.getElementById('metaDetailBtn'),
             statsOverlay: document.getElementById('metaDetailOverlay'),
@@ -1265,24 +1274,6 @@ class MetadataManager {
             loading: document.getElementById('metadataLoading'),
             empty: document.getElementById('metadataEmpty'),
             items: document.getElementById('metadataItems'),
-            values: {
-                speed: document.getElementById('metaSpeed'),
-                gear: document.getElementById('metaGear'),
-                steering: document.getElementById('metaSteering'),
-                steeringIcon: document.getElementById('metaSteeringIcon'),
-                steeringContainer: document.getElementById('metaSteeringContainer'),
-                blinkerLeft: document.getElementById('metaBlinkerLeft'),
-                blinkerRight: document.getElementById('metaBlinkerRight'),
-                brakeIcon: document.getElementById('metaBrakeIcon'),
-                brakeActiveGroup: document.querySelector('#metaBrakeIcon .brake-active'),
-                brakeInactiveGroup: document.querySelector('#metaBrakeIcon .brake-inactive'),
-                acceleratorIcon: document.getElementById('metaAcceleratorIcon'),
-                accelFillRect: document.getElementById('accelFillRect'),
-                autopilot: document.getElementById('metaAutopilot'),
-                gps: document.getElementById('metaGPS'),
-                heading: document.getElementById('metaHeading'),
-                acceleration: document.getElementById('metaAcceleration')
-            },
             stats: {
                 speed: document.getElementById('statsSpeed'),
                 gear: document.getElementById('statsGear'),
@@ -1320,7 +1311,7 @@ class MetadataManager {
         // Toggle from header button
         if (this.dom.switchBtn) {
             this.dom.switchBtn.addEventListener('click', () => {
-                const isCollapsed = this.dom.panel.classList.contains('collapsed');
+                const isCollapsed = Boolean(this.collapsed);
                 this.setCollapsed(!isCollapsed);
             });
         }
@@ -1342,106 +1333,21 @@ class MetadataManager {
         // Stats overlay draggable logic
         this.initStatsOverlayDrag();
 
-        // Draggable logic
-        let isDragging = false;
-        let offsetX, offsetY;
-
-        this.dom.panel.addEventListener('mousedown', (e) => {
-            // Only drag if left click
-            if (e.button !== 0) return;
-            if (this.dom.panel.classList.contains('collapsed')) return;
-
-            isDragging = true;
-            this.dom.panel.classList.add('dragging');
-            
-            // Get the container's bounding box to calculate relative coordinates
-            const parentRect = this.dom.panel.parentElement.getBoundingClientRect();
-            const rect = this.dom.panel.getBoundingClientRect();
-            
-            // Calculate the offset of the mouse relative to the panel's top-left corner
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
-
-            // Add global mouse listeners
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-            
-            e.preventDefault();
-        });
-
-        const onMouseMove = (e) => {
-            if (!isDragging) return;
-
-            const parentRect = this.dom.panel.parentElement.getBoundingClientRect();
-            
-            // Calculate new position relative to the parent container
-            let newLeft = e.clientX - parentRect.left - offsetX;
-            let newTop = e.clientY - parentRect.top - offsetY;
-
-            // Boundary checks
-            const panelRect = this.dom.panel.getBoundingClientRect();
-            newLeft = Math.max(0, Math.min(newLeft, parentRect.width - panelRect.width));
-            newTop = Math.max(0, Math.min(newTop, parentRect.height - panelRect.height));
-
-            this.dom.panel.style.left = `${newLeft}px`;
-            this.dom.panel.style.top = `${newTop}px`;
-            this.dom.panel.classList.add('is-moved');
-            this.dom.panel.style.transform = 'none'; 
-            this.dom.panel.style.margin = '0';
-        };
-
-        const onMouseUp = () => {
-            isDragging = false;
-            this.dom.panel.classList.remove('dragging');
-            this.dom.panel.style.transform = ''; // Allow CSS to handle scale/transitions
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-
-            // Convert to percentages for responsiveness
-            const parentRect = this.dom.panel.parentElement.getBoundingClientRect();
-            const panelRect = this.dom.panel.getBoundingClientRect();
-            
-            if (parentRect.width > 0 && parentRect.height > 0) {
-                const leftPct = ((panelRect.left - parentRect.left) / parentRect.width) * 100;
-                const topPct = ((panelRect.top - parentRect.top) / parentRect.height) * 100;
-                
-                this.dom.panel.style.left = `${leftPct}%`;
-                this.dom.panel.style.top = `${topPct}%`;
-            }
-        };
-
-        // Handle window resize to keep panel in bounds
-        window.addEventListener('resize', () => {
-            if (this.dom.panel.style.left && this.dom.panel.style.left.includes('%')) {
-                this.ensureInBounds();
-            }
-        });
     }
 
-    ensureInBounds() {
-        const parentRect = this.dom.panel.parentElement.getBoundingClientRect();
-        const panelRect = this.dom.panel.getBoundingClientRect();
-        
-        if (panelRect.right > parentRect.right) {
-            const newLeft = Math.max(0, parentRect.width - panelRect.width);
-            this.dom.panel.style.left = `${(newLeft / parentRect.width) * 100}%`;
-        }
-        if (panelRect.bottom > parentRect.bottom) {
-            const newTop = Math.max(0, parentRect.height - panelRect.height);
-            this.dom.panel.style.top = `${(newTop / parentRect.height) * 100}%`;
-        }
-    }
 
     setCollapsed(collapsed) {
-        if (collapsed) {
-            this.dom.panel.classList.add('collapsed');
-            if (this.dom.switchBtn) this.dom.switchBtn.classList.remove('active');
-        } else {
-            this.dom.panel.classList.remove('collapsed');
-            if (this.dom.switchBtn) this.dom.switchBtn.classList.add('active');
+        // The driving overlay replaced the old panel, so this is what the
+        // "Drive Data" button shows and hides now.
+        const overlay = document.getElementById('seiOverlay');
+        if (overlay) {
+            overlay.classList.toggle('sei-overlay--hidden', collapsed);
+            overlay.setAttribute('aria-hidden', String(collapsed));
         }
+        this.collapsed = collapsed;
+        if (this.dom.switchBtn) this.dom.switchBtn.classList.toggle('active', !collapsed);
     }
-    
+
     async loadMetadata(file) {
         if (!this.SeiMetadata) {
             console.warn("[MetadataManager] Protobuf not ready, skipping metadata load");
@@ -1495,6 +1401,7 @@ class MetadataManager {
         } finally {
             this.isLoading = false;
             this.updateUIStatus();
+            if (!document.getElementById('liveMap')?.hidden) this.setMapTrack(this.currentMetadata);
         }
     }
     
@@ -1505,6 +1412,90 @@ class MetadataManager {
      * gear, brake, blinkers, speed, steering angle, accelerator travel, and an
      * Autopilot banner when it is engaged. The detailed panel keeps the rest.
      */
+
+    /**
+     * Live map of where the clip was filmed.
+     *
+     * Metadata carries a position per sample, so the whole clip is a track and
+     * the playhead is a point on it. Leaflet is only created the first time the
+     * map is opened: building it for every event would cost tiles nobody looks
+     * at.
+     */
+    ensureMap() {
+        if (this.map || typeof L === 'undefined') return this.map || null;
+        const canvas = document.getElementById('liveMapCanvas');
+        if (!canvas) return null;
+
+        this.map = L.map(canvas, {
+            attributionControl: true,
+            zoomControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false,
+            touchZoom: false,
+        });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap',
+        }).addTo(this.map);
+
+        this.mapTrack = L.polyline([], { color: '#f0b350', weight: 3, opacity: 0.85 }).addTo(this.map);
+        this.mapMarker = L.marker([0, 0], {
+            icon: L.divIcon({ className: '', html: '<div class="live-map-marker"></div>', iconSize: [14, 14] }),
+        }).addTo(this.map);
+        return this.map;
+    }
+
+    /** Feed the map the track of the event being played. */
+    setMapTrack(samples) {
+        const points = (samples || [])
+            .map((s) => s.data)
+            .filter((d) => d && Number.isFinite(+d.latitudeDeg) && Number.isFinite(+d.longitudeDeg)
+                        && (+d.latitudeDeg !== 0 || +d.longitudeDeg !== 0))
+            .map((d) => [+d.latitudeDeg, +d.longitudeDeg]);
+
+        this.mapPoints = points;
+        const empty = document.getElementById('liveMapEmpty');
+        const canvas = document.getElementById('liveMapCanvas');
+        const hasFix = points.length > 0;
+        if (empty) {
+            empty.hidden = hasFix;
+            empty.textContent = i18n[this.viewer.currentLanguage].liveMapNoFix;
+        }
+        if (canvas) canvas.style.display = hasFix ? '' : 'none';
+        if (!hasFix || !this.ensureMap()) return;
+
+        this.mapTrack.setLatLngs(points);
+        this.map.fitBounds(this.mapTrack.getBounds(), { padding: [16, 16], maxZoom: 16 });
+        this.mapMarker.setLatLng(points[0]);
+        // Leaflet measures the container on creation; it was hidden then.
+        setTimeout(() => this.map.invalidateSize(), 0);
+    }
+
+    updateMapPosition(d) {
+        if (!this.map || !this.mapPoints || !this.mapPoints.length) return;
+        const lat = +d.latitudeDeg, lon = +d.longitudeDeg;
+        if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return;
+        this.mapMarker.setLatLng([lat, lon]);
+        if (!this.map.getBounds().pad(-0.25).contains([lat, lon])) this.map.panTo([lat, lon]);
+    }
+
+    toggleMap(show) {
+        const panel = document.getElementById('liveMap');
+        const btn = document.getElementById('mapToggleBtn');
+        if (!panel) return;
+        const visible = show === undefined ? panel.hidden : show;
+        panel.hidden = !visible;
+        if (btn) btn.classList.toggle('active', visible);
+        try { localStorage.setItem('liveMap', visible ? '1' : '0'); } catch { /* private mode */ }
+        if (visible) {
+            this.setMapTrack(this.currentMetadata);
+            if (this.map) setTimeout(() => this.map.invalidateSize(), 0);
+        }
+    }
+
     updateDrivingOverlay(d) {
         const o = this.sei || (this.sei = {
             root: document.getElementById('seiOverlay'),
@@ -1530,6 +1521,7 @@ class MetadataManager {
             try { this.speedUnit = localStorage.getItem('speedUnit') || 'kmh'; } catch { this.speedUnit = 'kmh'; }
         }
 
+        if (this.collapsed) return;
         o.root.classList.remove('sei-overlay--hidden');
         o.root.setAttribute('aria-hidden', 'false');
 
@@ -1558,14 +1550,17 @@ class MetadataManager {
 
         const ap = d.autopilotState;
         const engaged = ap && ap !== 'NONE' && ap !== 'UNKNOWN';
+        // TACC only holds the speed; the car is not steering, so the wheel
+        // stays neutral. Only Autosteer and FSD take the wheel.
+        const steering = ap === 'AUTOSTEER' || ap === 'SELF_DRIVING';
+
         o.autopilot.hidden = !engaged;
         if (engaged) {
             const t = i18n[this.viewer.currentLanguage];
             const names = { SELF_DRIVING: t.autopilotSelfDriving, AUTOSTEER: t.autopilotAutosteer, TACC: t.autopilotTACC };
             o.autopilot.textContent = names[ap] || ap;
         }
-        o.gear.classList.toggle('sei-gear-text--autopilot', Boolean(engaged));
-        o.steering.classList.toggle('sei-steering-icon--autosteer', Boolean(engaged));
+        o.steering.classList.toggle('sei-steering-icon--autosteer', steering);
     }
 
     hideDrivingOverlay() {
@@ -1585,108 +1580,23 @@ class MetadataManager {
     
     updateDisplay(currentTime) {
         if (this.currentMetadata.length === 0) return;
-        
-        const lang = this.viewer.currentLanguage;
-        
-        // Find the metadata item closest to current playback time
+
+        // The sample closest to, but not after, the playhead.
         let bestMatch = this.currentMetadata[0];
-        for (let i = 0; i < this.currentMetadata.length; i++) {
-            if (this.currentMetadata[i].time <= currentTime) {
-                bestMatch = this.currentMetadata[i];
-            } else {
-                break;
-            }
+        for (const sample of this.currentMetadata) {
+            if (sample.time > currentTime) break;
+            bestMatch = sample;
         }
-        
         if (!bestMatch || !bestMatch.data) return;
-        
+
         const d = bestMatch.data;
-        const v = this.dom.values;
-
         this.updateDrivingOverlay(d);
-        
-        // Update speed (just the number, unit is separate)
-        const speedKmh = (d.vehicleSpeedMps || 0) * 3.6;
-        const speedDisplay = Math.round(speedKmh);
-        v.speed.textContent = speedDisplay === 0 ? '0' : speedDisplay;
-        
-        // Update gear (single letter: P, D, R, N)
-        const gearLetterMap = {
-            'GEAR_PARK': 'P',
-            'GEAR_DRIVE': 'D',
-            'GEAR_REVERSE': 'R',
-            'GEAR_NEUTRAL': 'N'
-        };
-        v.gear.textContent = gearLetterMap[d.gearState] || '--';
-        
-        // Update steering wheel angle and rotation
-        const steeringAngle = d.steeringWheelAngle || 0;
-        v.steering.textContent = `${steeringAngle.toFixed(0)}°`;
-        // Rotate the steering wheel icon - allow full rotation (can exceed 360°)
-        v.steeringIcon.style.transform = `rotate(${steeringAngle}deg)`;
-        
-        // Update steering wheel color based on autopilot state
-        v.steeringIcon.classList.remove('autopilot-active', 'autopilot-self-driving');
-        if (d.autopilotState === 'SELF_DRIVING') {
-            v.steeringIcon.classList.add('autopilot-self-driving');
-        } else if (d.autopilotState === 'AUTOSTEER' || d.autopilotState === 'TACC') {
-            v.steeringIcon.classList.add('autopilot-active');
-        }
-        
-        // Update accelerator pedal - fill height based on pedal position (grows from bottom)
-        const accelPercent = d.acceleratorPedalPosition || 0;
-        if (v.accelFillRect) {
-            const maxHeight = 20; // max fill height
-            const fillHeight = (accelPercent / 100) * maxHeight;
-            const yPos = 26 - fillHeight; // start from bottom (y=26) and grow upward
-            v.accelFillRect.setAttribute('y', yPos);
-            v.accelFillRect.setAttribute('height', fillHeight);
-            v.accelFillRect.setAttribute('opacity', accelPercent > 0 ? 0.9 : 0);
-        }
-        v.acceleratorIcon.classList.toggle('active', accelPercent > 5);
-        
-        // Update brake - use CSS class to toggle active state
-        const brakeApplied = d.brakeApplied || false;
-        v.brakeIcon.classList.toggle('active', brakeApplied);
-        
-        // Update blinkers
-        v.blinkerLeft.classList.toggle('active', d.blinkerOnLeft || false);
-        v.blinkerRight.classList.toggle('active', d.blinkerOnRight || false);
-        
-        // Update autopilot
-        const apMap = {
-            'NONE': 'autopilotNone',
-            'SELF_DRIVING': 'autopilotSelfDriving',
-            'AUTOSTEER': 'autopilotAutosteer',
-            'TACC': 'autopilotTACC'
-        };
-        v.autopilot.textContent = i18n[lang][apMap[d.autopilotState] || d.autopilotState] || d.autopilotState || '--';
-        v.autopilot.style.color = d.autopilotState !== 'NONE' ? '#1890ff' : '';
-        
-        // Update GPS
-        v.gps.textContent = (typeof d.latitudeDeg === 'number' && typeof d.longitudeDeg === 'number') 
-            ? `${d.latitudeDeg.toFixed(6)}, ${d.longitudeDeg.toFixed(6)}` 
-            : '--';
-        
-        // Update Heading
-        v.heading.textContent = (typeof d.headingDeg === 'number') ? `${d.headingDeg.toFixed(0)}°` : '--';
-        
-        // Update Acceleration
-        v.acceleration.textContent = (typeof d.linearAccelerationMps2X === 'number' && 
-                                     typeof d.linearAccelerationMps2Y === 'number' && 
-                                     typeof d.linearAccelerationMps2Z === 'number') 
-            ? `X:${d.linearAccelerationMps2X.toFixed(2)} Y:${d.linearAccelerationMps2Y.toFixed(2)} Z:${d.linearAccelerationMps2Z.toFixed(2)}` 
-            : '--';
+        this.updateMapPosition(d);
 
-        // Store for detail modal
         this.lastDetailData = d;
-        
-        // Update stats overlay if open
-        if (this.detailModalOpen) {
-            this.updateStatsDisplay(d);
-        }
+        if (this.detailModalOpen) this.updateStatsDisplay(d);
     }
-    
+
     toggleStatsOverlay() {
         if (this.detailModalOpen) {
             this.hideStatsOverlay();
@@ -2000,7 +1910,14 @@ class VideoListComponent {
         const translations = i18n[lang];
         this.container.innerHTML = '';
         if (!events || events.length === 0) {
-            if (this.viewer.allFiles.length > 0) {
+            // Until discovery finishes, "no clips" is not yet true: saying
+            // "plug in your USB drive" and then replacing it with a list is
+            // worse than showing that we are still looking.
+            if (this.viewer.discovering) {
+                this.container.innerHTML =
+                    `<div class="empty-state is-loading"><span class="spinner" aria-hidden="true"></span>` +
+                    `<p>${translations.discovering}</p></div>`;
+            } else if (this.viewer.allFiles.length > 0) {
                 this.container.innerHTML = `<div class="empty-state"><p>${translations.noRecordsFound}</p></div>`;
             } else {
                 this.viewer.showInitialHelpMessage();
@@ -6042,6 +5959,7 @@ class TeslaCamViewer {
         this.currentLanguage = 'en';
         this.currentMapCoordinates = null;
         this.hiddenClips = this.loadHiddenClips();
+        this.discovering = true;
         this.flatpickrInstance = null;
         this.videoClipProcessor = new VideoClipProcessor();
         this.metadataManager = new MetadataManager(this);
@@ -6070,6 +5988,7 @@ class TeslaCamViewer {
             downloadFileBtn: document.getElementById('downloadFileBtn'),
             exportMetadataBtn: document.getElementById('exportMetadataBtn'),
             metadataSwitchBtn: document.getElementById('metaSwitchBtn'),
+            mapToggleBtn: document.getElementById('mapToggleBtn'),
             headerLocationDisplay: document.getElementById('headerLocationDisplay'),
             headerMenuBtn: document.getElementById('headerMenuBtn'),
             headerRight: document.getElementById('headerRight'),
@@ -6126,6 +6045,16 @@ class TeslaCamViewer {
      */
     async bootstrapSource() {
         this.isVolumeMode = false;
+        this.discovering = true;
+        this.filterAndRender();
+        try {
+            await this.discoverSource();
+        } finally {
+            this.discovering = false;
+        }
+    }
+
+    async discoverSource() {
         try {
             const result = await loadTeslaCamVolume();
 
@@ -6218,6 +6147,12 @@ class TeslaCamViewer {
                 localStorage.setItem('hideEncrypted', this.dom.hideEncrypted.checked ? '1' : '0');
                 this.filterAndRender();
             });
+        }
+        if (this.dom.mapToggleBtn) {
+            this.dom.mapToggleBtn.addEventListener('click', () => this.metadataManager.toggleMap());
+            let wanted = false;
+            try { wanted = localStorage.getItem('liveMap') === '1'; } catch { /* private mode */ }
+            if (wanted) this.metadataManager.toggleMap(true);
         }
         if (this.dom.showHiddenBtn) {
             this.dom.showHiddenBtn.addEventListener('click', () => this.unhideAllClips());

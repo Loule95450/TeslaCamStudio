@@ -6,6 +6,7 @@
     <title>TeslaCam Studio</title>
     <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -102,6 +103,10 @@
                             <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-car-profile"/></svg></span>
                             <span class="btn-text" data-i18n="metadata">Drive Data</span>
                         </button>
+                        <button id="mapToggleBtn" class="control-btn" title="Show the route on a map" disabled>
+                            <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-map-pin"/></svg></span>
+                            <span class="btn-text" data-i18n="liveMap">Map</span>
+                        </button>
                         <button id="metaDetailBtn" class="control-btn" title="View detailed drive data" disabled>
                             <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-chart-line"/></svg></span>
                             <span class="btn-text" data-i18n="metadataDetail">Details</span>
@@ -143,6 +148,10 @@
                  dashcam viewer: a translucent blurred pill over the video with
                  gear and brake left, blinkers flanking the speed, steering and
                  accelerator right. -->
+            <div id="liveMap" class="live-map" hidden>
+                <div class="live-map-canvas" id="liveMapCanvas"></div>
+                <div class="live-map-empty" id="liveMapEmpty" hidden></div>
+            </div>
             <div id="seiOverlay" class="sei-overlay sei-overlay--hidden" aria-hidden="true">
                 <div class="sei-indicators">
                     <div class="sei-gear sei-indicator sei-indicator--gray"><span class="sei-gear-text" id="seiGear">-</span></div>
@@ -194,114 +203,7 @@
                     <div class="camera-label">Right Pillar</div>
                 </div>
 
-                <div id="metadataPanel" class="metadata-panel collapsed">
-                    <div class="metadata-content">
-                        <div class="metadata-header">
-                            <span data-i18n="metadata">Drive Data</span>
-                        </div>
-                        <div class="metadata-body" id="metadataBody">
-                            <div class="metadata-loading" id="metadataLoading" style="display: none;">
-                                <span data-i18n="loadingMetadata">Loading...</span>
-                            </div>
-                            <div class="metadata-empty" id="metadataEmpty">
-                                <span data-i18n="noMetadata">No metadata found</span>
-                            </div>
-                            <div class="metadata-items" id="metadataItems" style="display: none;">
-                                <!-- Main Dashboard Row -->
-                                <div class="metadata-dashboard">
-                                    <!-- Left Column: Gear + Brake -->
-                                    <div class="meta-left-col">
-                                        <div class="meta-gear" id="metaGear">P</div>
-                                        <div class="meta-brake-container">
-                                            <svg class="meta-brake-icon" id="metaBrakeIcon" viewBox="0 0 1024 1024" width="22" height="22">
-                                                <!-- Brake pedal - inactive state -->
-                                                <g class="brake-inactive">
-                                                    <path d="M821.394 861.482H200.242c-23.709 0-44.013-20.191-45.124-44.975 0 0-30.555-129.896-30.044-166.228 0.325-23.102 15.23-164.3 15.23-164.3 2.449-27.739 18.019-48.258 42.686-48.258h646.233c24.667 0 44.357 21.769 43.759 48.258l14.579 163.622-22.043 166.906c-0.56 24.784-20.414 44.975-44.124 44.975z m24.716-358.364l0.292-10.498c0.23-8.275-6.452-15.059-14.85-15.059H186.497c-8.397 0-14.828 6.784-14.291 15.059l0.681 10.498c0.534 8.232 7.802 14.954 16.153 14.954h641.472c8.35 0 15.37-6.722 15.598-14.954z m8.739 81.304l0.296-10.264c0.233-8.091-6.628-14.724-15.248-14.724H177.735c-8.62 0-15.226 6.633-14.681 14.724l0.691 10.264c0.542 8.049 7.999 14.622 16.571 14.622H838.84c8.574 0 15.777-6.572 16.009-14.622z m6.172 79.506l0.298-10.038c0.235-7.912-6.747-14.399-15.516-14.399H172.234c-8.769 0-15.494 6.487-14.945 14.399l0.695 10.038c0.545 7.872 8.126 14.3 16.847 14.3h669.91c8.721 0 16.047-6.428 16.28-14.3z m-14.901 77.765l0.282-9.819c0.222-7.74-6.466-14.085-14.863-14.085H186.526c-8.397 0-14.841 6.345-14.322 14.085l0.659 9.819c0.517 7.701 7.772 13.989 16.123 13.989h641.548c8.351 0 15.365-6.288 15.586-13.989z m-8.749 76.081l0.267-9.608c0.21-7.573-6.189-13.781-14.222-13.781H206.385c-8.033 0-14.202 6.208-13.711 13.781l0.623 9.608c0.489 7.535 7.425 13.688 15.415 13.688h613.751c7.99 0.001 14.698-6.152 14.908-13.688z m1.869-378.856l36.038-94.167 21.623-119.775H785.183L752.749 356.56l-118.926 82.358H839.24z" fill="rgba(255,255,255,0.3)"/>
-                                                </g>
-                                                <!-- Active state -->
-                                                <g class="brake-active">
-                                                    <path d="M821.394 861.482H200.242c-23.709 0-44.013-20.191-45.124-44.975 0 0-30.555-129.896-30.044-166.228 0.325-23.102 15.23-164.3 15.23-164.3 2.449-27.739 18.019-48.258 42.686-48.258h646.233c24.667 0 44.357 21.769 43.759 48.258l14.579 163.622-22.043 166.906c-0.56 24.784-20.414 44.975-44.124 44.975z m24.716-358.364l0.292-10.498c0.23-8.275-6.452-15.059-14.85-15.059H186.497c-8.397 0-14.828 6.784-14.291 15.059l0.681 10.498c0.534 8.232 7.802 14.954 16.153 14.954h641.472c8.35 0 15.37-6.722 15.598-14.954z m8.739 81.304l0.296-10.264c0.233-8.091-6.628-14.724-15.248-14.724H177.735c-8.62 0-15.226 6.633-14.681 14.724l0.691 10.264c0.542 8.049 7.999 14.622 16.571 14.622H838.84c8.574 0 15.777-6.572 16.009-14.622z m6.172 79.506l0.298-10.038c0.235-7.912-6.747-14.399-15.516-14.399H172.234c-8.769 0-15.494 6.487-14.945 14.399l0.695 10.038c0.545 7.872 8.126 14.3 16.847 14.3h669.91c8.721 0 16.047-6.428 16.28-14.3z m-14.901 77.765l0.282-9.819c0.222-7.74-6.466-14.085-14.863-14.085H186.526c-8.397 0-14.841 6.345-14.322 14.085l0.659 9.819c0.517 7.701 7.772 13.989 16.123 13.989h641.548c8.351 0 15.365-6.288 15.586-13.989z m-8.749 76.081l0.267-9.608c0.21-7.573-6.189-13.781-14.222-13.781H206.385c-8.033 0-14.202 6.208-13.711 13.781l0.623 9.608c0.489 7.535 7.425 13.688 15.415 13.688h613.751c7.99 0.001 14.698-6.152 14.908-13.688z m1.869-378.856l36.038-94.167 21.623-119.775H785.183L752.749 356.56l-118.926 82.358H839.24z" fill="#ff4d4f"/>
-                                                </g>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Left Blinker -->
-                                    <div class="meta-blinker meta-blinker-left" id="metaBlinkerLeft">
-                                        <svg viewBox="0 0 48 48" width="18" height="18">
-                                            <path class="blinker-outline" d="M20 8 L6 24 L20 40 L20 30 L42 30 L42 18 L20 18 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-                                            <path class="blinker-fill" d="M20 8 L6 24 L20 40 L20 30 L42 30 L42 18 L20 18 Z" fill="#52c41a" stroke="none" opacity="0"/>
-                                        </svg>
-                                    </div>
-                                    
-                                    <!-- Center: Speed -->
-                                    <div class="meta-speed-container">
-                                        <span class="meta-speed-value" id="metaSpeed">0</span>
-                                        <span class="meta-speed-unit">km/h</span>
-                                    </div>
-                                    
-                                    <!-- Right Blinker -->
-                                    <div class="meta-blinker meta-blinker-right" id="metaBlinkerRight">
-                                        <svg viewBox="0 0 48 48" width="18" height="18">
-                                            <path class="blinker-outline" d="M28 8 L42 24 L28 40 L28 30 L6 30 L6 18 L28 18 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-                                            <path class="blinker-fill" d="M28 8 L42 24 L28 40 L28 30 L6 30 L6 18 L28 18 Z" fill="#52c41a" stroke="none" opacity="0"/>
-                                        </svg>
-                                    </div>
-                                    
-                                    <!-- Right Column: Steering + Accelerator -->
-                                    <div class="meta-right-col">
-                                        <div class="meta-steering-container" id="metaSteeringContainer">
-                                            <svg class="meta-steering-icon" id="metaSteeringIcon" viewBox="0 0 64 64" width="18" height="18">
-                                                <!-- Outer ring -->
-                                                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="5"/>
-                                                <!-- Inner hub circle -->
-                                                <circle cx="32" cy="32" r="9" fill="rgba(255,255,255,0.9)"/>
-                                                <!-- Three spokes -->
-                                                <!-- Left spoke -->
-                                                <rect x="4" y="28" width="19" height="8" rx="2" fill="rgba(255,255,255,0.9)"/>
-                                                <!-- Right spoke -->
-                                                <rect x="41" y="28" width="19" height="8" rx="2" fill="rgba(255,255,255,0.9)"/>
-                                                <!-- Bottom spoke -->
-                                                <rect x="28" y="41" width="8" height="19" rx="2" fill="rgba(255,255,255,0.9)"/>
-                                            </svg>
-                                            <span class="meta-steering-value" id="metaSteering">0°</span>
-                                        </div>
-                                        <div class="meta-accelerator-container">
-                                            <svg class="meta-accelerator-icon" id="metaAcceleratorIcon" viewBox="0 0 32 32" width="22" height="22">
-                                                <!-- Base gray pedal (always visible) -->
-                                                <rect x="8" y="4" width="16" height="24" rx="3" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
-                                                <!-- Lightning bolt icon -->
-                                                <path d="M18 8 L13 16 L16 16 L14 24 L19 15 L16 15 L18 8 Z" fill="rgba(255,255,255,0.4)"/>
-                                                <!-- Active fill overlay - grows from bottom -->
-                                                <rect id="accelFillRect" x="10" y="26" width="12" height="0" rx="2" fill="#73d13d" opacity="0"/>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Secondary Info Row -->
-                                <div class="metadata-secondary">
-                                    <div class="metadata-item">
-                                        <span class="metadata-label" data-i18n="autopilot">Autopilot</span>
-                                        <span class="metadata-value" id="metaAutopilot">--</span>
-                                    </div>
-                                    <div class="metadata-item">
-                                        <span class="metadata-label" data-i18n="gps">GPS</span>
-                                        <span class="metadata-value" id="metaGPS">--</span>
-                                    </div>
-                                    <div class="metadata-item">
-                                        <span class="metadata-label" data-i18n="heading">Heading</span>
-                                        <span class="metadata-value" id="metaHeading">--</span>
-                                    </div>
-                                    <div class="metadata-item">
-                                        <span class="metadata-label" data-i18n="acceleration">Acceleration</span>
-                                        <span class="metadata-value" id="metaAcceleration">--</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
 
                 <div id="videoControlsOverlay" class="video-controls-overlay">
                     <div class="video-controls-container">
@@ -526,6 +428,7 @@
     </div>
 
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
     <script src="vendor/protobuf.min.js"></script>
