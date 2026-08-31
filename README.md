@@ -156,9 +156,29 @@ docker exec teslacam-studio ls /teslacam
 ```
 
 That should list `RecentClips`, `SavedClips` and `SentryClips`. If it is empty,
-the host path is wrong. If it errors with permission denied, the folder is not
-readable by the container: either `chmod o+rx` the folder, or run the container
-as its owner with `user: "UID:GID"`.
+the host path is wrong.
+
+### Permission denied on the volume
+
+Common on a NAS, where the shared folder is private to its owner. Find the
+numeric owner of the folder:
+
+```bash
+stat -c '%u:%g' /path/to/TeslaCam
+```
+
+Then pass those two numbers so the nginx workers run as that user:
+
+```yaml
+    environment:
+      - PUID=1000
+      - PGID=1000
+```
+
+Do **not** use Docker's `user:` setting for this. It changes the whole
+container, and nginx's master process then cannot bind port 80 or write its own
+configuration, so the container exits immediately. `PUID`/`PGID` only change the
+worker processes, which is what actually reads your footage.
 
 ### 🔐 Authentication
 
