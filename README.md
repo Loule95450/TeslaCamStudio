@@ -1,24 +1,24 @@
 <p align="center">
-  <img src="src/logo-small.png" alt="TDashcam Studio Logo" width="80" height="80">
+  <img src="src/logo-small.png" alt="TeslaCam Studio Logo" width="80" height="80">
 </p>
-<h1 align="center">TDashcam Studio</h1>
+<h1 align="center">TeslaCam Studio</h1>
 
 <p align="center">
-  <a href="https://github.com/DeaglePC/TDashcamStudio/releases"><img src="https://img.shields.io/github/v/release/DeaglePC/TDashcamStudio?style=flat-square&color=blue" alt="Release"></a>
-  <a href="https://github.com/DeaglePC/TDashcamStudio/releases"><img src="https://img.shields.io/github/downloads/DeaglePC/TDashcamStudio/total?style=flat-square&color=green" alt="Downloads"></a>
-  <a href="https://github.com/DeaglePC/TDashcamStudio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/DeaglePC/TDashcamStudio?style=flat-square" alt="License"></a>
-  <a href="https://github.com/DeaglePC/TDashcamStudio/stargazers"><img src="https://img.shields.io/github/stars/DeaglePC/TDashcamStudio?style=flat-square" alt="Stars"></a>
-  <a href="https://github.com/DeaglePC/TDashcamStudio/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/DeaglePC/TDashcamStudio/build.yml?style=flat-square&label=CI" alt="CI"></a>
+  <a href="https://github.com/Loule95450/TeslaCamStudio/releases"><img src="https://img.shields.io/github/v/release/Loule95450/TeslaCamStudio?style=flat-square&color=blue" alt="Release"></a>
+  <a href="https://github.com/Loule95450/TeslaCamStudio/releases"><img src="https://img.shields.io/github/downloads/Loule95450/TeslaCamStudio/total?style=flat-square&color=green" alt="Downloads"></a>
+  <a href="https://github.com/Loule95450/TeslaCamStudio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Loule95450/TeslaCamStudio?style=flat-square" alt="License"></a>
+  <a href="https://github.com/Loule95450/TeslaCamStudio/stargazers"><img src="https://img.shields.io/github/stars/Loule95450/TeslaCamStudio?style=flat-square" alt="Stars"></a>
+  <a href="https://github.com/Loule95450/TeslaCamStudio/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Loule95450/TeslaCamStudio/build.yml?style=flat-square&label=CI" alt="CI"></a>
   <a href="https://app.tdashcam.studio/"><img src="https://img.shields.io/badge/Website-app.tdashcam.studio-blue?style=flat-square" alt="Website"></a>
 </p>
 
 A modern, browser-based viewer for your Tesla dashcam footage. Play all six camera angles (Front, Back, Left, Right, Left B-Pillar, Right B-Pillar) simultaneously with a sleek and intuitive interface. Deployed as a single container, reading straight from a mounted volume.
 
-## 🆚 Why choose TDashcam Studio?
+## 🆚 Why choose TeslaCam Studio?
 
 Compared to the original Tesla Dashcam player, this project provides more powerful features and a superior experience:
 
-| Feature | Tesla In-Car Player | Raw PC Playback | TDashcam Studio (This Project) |
+| Feature | Tesla In-Car Player | Raw PC Playback | TeslaCam Studio (This Project) |
 | :--- | :--- | :--- | :--- |
 | **Sync Playback** | ✅ Supports 6 channels | ❌ Manual file opening, no sync | ✅ **Perfect 6-channel sync, intuitive layout** |
 | **Viewing Exp.** | Limited to car screen | Large screen, but messy file folders | **Multi-device**, large screen, organized events |

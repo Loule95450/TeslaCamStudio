@@ -352,7 +352,7 @@ const DashcamHelpers = (function () {
 
   /** Format a value for display */
   function formatValue(value, fieldDef) {
-    if (value === undefined || value === null) return '—';
+    if (value === undefined || value === null) return '--';
 
     if (fieldDef.enumMap) {
       return fieldDef.enumMap[value] || value;

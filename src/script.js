@@ -1,20 +1,20 @@
 const i18n = {
     en: {
-        pageTitle: "TDashcam Studio",
-        headerTitle: "TDashcam Studio",
+        pageTitle: "TeslaCam Studio",
+        headerTitle: "TeslaCam Studio",
         toggleSidebar: "Toggle Sidebar",
         toggleTheme: "Toggle Theme",
         toggleLanguage: "Passer en français",
         drivingRecords: "Driving Records",
         date: "Date",
         eventType: "Event Type",
-        allTypes: "📂 All Types",
-        recentClips: "🕒 Recent Clips",
-        savedClips: "💾 Saved Clips",
-        sentryClips: "🤖 Sentry Clips",
+        allTypes: "All Types",
+        recentClips: "Recent Clips",
+        savedClips: "Saved Clips",
+        sentryClips: "Sentry Clips",
         noRecordsFound: "No records found",
-        selectFolder: "📁 Select Folder",
-        selectFiles: "📁 Select Files",
+        selectFolder: "Select Folder",
+        selectFiles: "Select Files",
         helpStep1: "Insert your Tesla USB drive into your PC",
         helpStep2: "Select or drag the 'TeslaCam' directory from the drive",
         helpStep1IOS: "Copy TeslaCam videos to your iPad/iPhone",
@@ -120,21 +120,21 @@ const i18n = {
         volumeSource: "Reading from the mounted volume"
     },
     fr: {
-        pageTitle: "TDashcam Studio",
-        headerTitle: "TDashcam Studio",
+        pageTitle: "TeslaCam Studio",
+        headerTitle: "TeslaCam Studio",
         toggleSidebar: "Afficher/masquer le panneau",
         toggleTheme: "Changer de thème",
         toggleLanguage: "Switch to English",
         drivingRecords: "Enregistrements",
         date: "Date",
         eventType: "Type d'événement",
-        allTypes: "📂 Tous les types",
-        recentClips: "🕒 Clips récents",
-        savedClips: "💾 Clips sauvegardés",
-        sentryClips: "🤖 Mode Sentinelle",
+        allTypes: "Tous les types",
+        recentClips: "Clips récents",
+        savedClips: "Clips sauvegardés",
+        sentryClips: "Mode Sentinelle",
         noRecordsFound: "Aucun enregistrement trouvé",
-        selectFolder: "📁 Choisir un dossier",
-        selectFiles: "📁 Choisir des fichiers",
+        selectFolder: "Choisir un dossier",
+        selectFiles: "Choisir des fichiers",
         helpStep1: "Branchez la clé USB de votre Tesla sur votre ordinateur",
         helpStep2: "Sélectionnez ou glissez le dossier « TeslaCam » de la clé",
         helpStep1IOS: "Copiez les vidéos TeslaCam sur votre iPad/iPhone",
@@ -2263,7 +2263,7 @@ class VideoListComponent {
             img.onload = () => URL.revokeObjectURL(img.src);
             thumbnailDiv.appendChild(img);
         } else {
-            thumbnailDiv.innerHTML = `<div class="no-thumb">${this.getEventTypeLabel(event.eventType)}</div>`;
+            thumbnailDiv.innerHTML = `<div class="no-thumb"><svg class="icon" aria-hidden="true"><use href="#i-film-strip"/></svg>${this.getEventTypeLabel(event.eventType)}</div>`;
         }
         const durationDiv = document.createElement('div');
         durationDiv.className = 'video-duration';
@@ -2289,7 +2289,7 @@ class VideoListComponent {
 
         infoDiv.innerHTML = `
             <div class="video-time">
-                <span class="video-type-tag" title="${eventTypeLabel}">${eventTypeLabel.split(' ')[0]}</span>
+                <span class="video-type-tag" title="${eventTypeLabel}" aria-label="${eventTypeLabel}">${this.getEventTypeIcon(event.eventType)}</span>
                 ${cityHtml}${timeString}
             </div>
         `;
@@ -2306,6 +2306,19 @@ class VideoListComponent {
         };
 
         return card;
+    }
+
+    /* The tag used to render `label.split(' ')[0]`, which worked only because
+       every label began with an emoji. With the emoji gone that printed a
+       truncated word ("Mode", "Clips"), so the glyph is now a real icon. */
+    getEventTypeIcon(type) {
+        const icons = {
+            RecentClips: 'clock-counter-clockwise',
+            SavedClips: 'bookmark-simple',
+            SentryClips: 'shield-check'
+        };
+        const name = icons[type] || 'film-strip';
+        return `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
     }
 
     getEventTypeLabel(type) {
@@ -7916,7 +7929,7 @@ class TeslaCamViewer {
         if (this.dom.headerLocationDisplay) {
             if (event.city && event.lat && event.lon) {
                 const locationText = event.street ? `${event.city} · ${event.street}` : event.city;
-                this.dom.headerLocationDisplay.innerHTML = `📍 <span class="city-text">${locationText}</span>`;
+                this.dom.headerLocationDisplay.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#i-map-pin"/></svg> <span class="city-text">${locationText}</span>`;
                 this.dom.headerLocationDisplay.onclick = () => this.showMapModal(event.lat, event.lon);
                 this.dom.headerLocationDisplay.style.display = 'block';
             } else {
@@ -8386,9 +8399,13 @@ class TeslaCamViewer {
         if (this.dom.themeToggleBtn) {
             const iconEl = this.dom.themeToggleBtn.querySelector('.btn-icon');
             if (iconEl) {
-                iconEl.textContent = isDark ? '🌙' : '☀️';
+                iconEl.innerHTML = isDark
+                    ? '<svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>'
+                    : '<svg class="icon" aria-hidden="true"><use href="#i-sun"/></svg>';
             } else {
-                this.dom.themeToggleBtn.textContent = isDark ? '🌙' : '☀️';
+                this.dom.themeToggleBtn.innerHTML = isDark
+                    ? '<svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>'
+                    : '<svg class="icon" aria-hidden="true"><use href="#i-sun"/></svg>';
             }
             this.dom.themeToggleBtn.title = i18n[this.currentLanguage][isDark ? 'toggleDay' : 'toggleNight'];
         }
@@ -9620,7 +9637,7 @@ class TeslaCamViewer {
                         if (result.saved) {
                              btn.disabled = true;
                              btn.innerHTML = `
-                                <span class="btn-icon">✅</span>
+                                <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
                                 <span class="btn-text">${cameraName} saved</span>
                             `;
                              if (result.blob && result.blob.size > 0) {
@@ -9629,7 +9646,7 @@ class TeslaCamViewer {
                              this.dom.clipProgressText.textContent = translations.complete;
                         } else {
                             btn.innerHTML = `
-                                <span class="btn-icon">💾</span>
+                                <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-download-simple"/></svg></span>
                                 <span class="btn-text">Save ${cameraName} video</span>
                                 <span class="btn-size">${sizeText}</span>
                             `;
@@ -9639,7 +9656,7 @@ class TeslaCamViewer {
                                 result.downloaded = true;
                                 btn.disabled = true;
                                 btn.innerHTML = `
-                                    <span class="btn-icon">✅</span>
+                                    <span class="btn-icon"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
                                     <span class="btn-text">${cameraName} saved</span>
                                     <span class="btn-size">${sizeText}</span>
                                 `;
@@ -9740,7 +9757,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         window.viewer = new TeslaCamViewer();
         window.addEventListener('beforeunload', () => { if (window.viewer) window.viewer.destroy(); });
-        console.log('TDashcam Studio Initialized');
+        console.log('TeslaCam Studio Initialized');
     } catch (error) {
         console.error("Initialization failed:", error);
         alert("Player initialization failed. Check console for details.");
